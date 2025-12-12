@@ -9,10 +9,10 @@ export interface VisualizerHandle {
 interface VisualizerProps {
   shapes: Shape[];
   highlightedShapeId?: string | null;
-  showIds?: boolean;
+  visibleIdTypes?: ShapeType[];
 }
 
-const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, highlightedShapeId, showIds = false }, ref) => {
+const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, highlightedShapeId, visibleIdTypes = [] }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -21,7 +21,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
   const requestRef = useRef<number>(0);
   const shapesRef = useRef<Shape[]>(shapes);
   const highlightedRef = useRef<string | null | undefined>(highlightedShapeId);
-  const showIdsRef = useRef(showIds);
+  const visibleIdTypesRef = useRef(visibleIdTypes);
 
   // State only for UI overlay elements that don't need 60fps updates
   const [hoverInfo, setHoverInfo] = useState<{x: number, y: number, text: string} | null>(null);
@@ -71,9 +71,9 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
   // Update props trigger render
   useEffect(() => {
     highlightedRef.current = highlightedShapeId;
-    showIdsRef.current = showIds;
+    visibleIdTypesRef.current = visibleIdTypes;
     requestRender();
-  }, [highlightedShapeId, showIds]);
+  }, [highlightedShapeId, visibleIdTypes]);
 
   const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number, viewport: Viewport) => {
     const { centerX, centerY, scale } = viewport;
@@ -291,15 +291,16 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
       // Reset shadow
       ctx.shadowBlur = 0;
 
-      // Draw ID if enabled
-      // Condition: Show if showIds is ON AND (Shape is Point OR Shape is Highlighted)
-      // This satisfies "Default to not showing IDs for shapes other than points"
-      if (showIdsRef.current && (shape.type === ShapeType.POINT || isHighlight)) {
+      // Draw ID if allowed by type OR if highlighted
+      // TEXT type never shows ID
+      const shouldDrawId = shape.type !== ShapeType.TEXT && (visibleIdTypesRef.current.includes(shape.type) || isHighlight);
+
+      if (shouldDrawId) {
           ctx.font = '10px monospace';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'bottom';
           
-          const text = `#${shape.id}`;
+          const text = `${shape.id}`;
           const x = labelPoint.x + 4;
           const y = labelPoint.y - 4;
 

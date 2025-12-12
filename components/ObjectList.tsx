@@ -90,9 +90,9 @@ const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onS
         </button>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto">
         {shapes.length === 0 ? (
-          <div className="text-slate-600 text-xs text-center mt-10 italic">
+          <div className="text-slate-600 text-xs text-center mt-10 italic p-2">
             No objects parsed.
           </div>
         ) : (
@@ -103,18 +103,18 @@ const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onS
             const isOpen = openSections[type];
 
             return (
-                <div key={type} className="mb-2">
+                <div key={type} className="mb-1">
                     <div 
-                        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-slate-800 rounded select-none text-slate-400 hover:text-slate-200 transition-colors"
+                        className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur border-y border-slate-800/50 flex items-center gap-2 px-4 py-1.5 cursor-pointer hover:bg-slate-800 transition-colors shadow-sm"
                         onClick={() => toggleSection(type)}
                     >
-                         {isOpen ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
-                         <span className="text-xs font-bold uppercase tracking-wide">{getTypeLabel(type)}</span>
-                         <span className="ml-auto text-[10px] bg-slate-800 px-1.5 rounded-full text-slate-500">{groupShapes.length}</span>
+                         {isOpen ? <ChevronDownIcon className="w-3 h-3 text-slate-400" /> : <ChevronRightIcon className="w-3 h-3 text-slate-400" />}
+                         <span className="text-xs font-bold uppercase tracking-wide text-slate-300">{getTypeLabel(type)}</span>
+                         <span className="ml-auto text-[10px] bg-slate-800 px-1.5 rounded-full text-slate-500 border border-slate-700">{groupShapes.length}</span>
                     </div>
 
                     {isOpen && (
-                        <div className="pl-2 mt-1 space-y-1">
+                        <div className="px-2 mt-1 space-y-1 pb-2">
                             {groupShapes.map((shape) => (
                                 <div
                                     key={shape.id}

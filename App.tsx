@@ -2,30 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import Visualizer, { VisualizerHandle } from './components/Visualizer';
 import ObjectList from './components/ObjectList';
 import { parseInput } from './services/parser';
-import { Shape } from './types';
+import { Shape, ShapeType } from './types';
 import { ArrowPathIcon, QuestionMarkCircleIcon, ChevronDownIcon, ChevronRightIcon, ListBulletIcon, ArrowsPointingInIcon, TagIcon } from '@heroicons/react/24/outline';
 
 const SNIPPETS = {
   default: {
     label: "Test Cases (Polygons)",
-    format: `// Read number of test cases
-Read t
-
+    format: `Read t
 rep t:
-\t// Read N (vertices count)
 \tRead n
-\t
 \trep n:
-\t\t// Read x, y
 \t\tRead x y
-\t\t
-\t\t// Buffer for polygon
 \t\tPush x y
-\t\t
-\t\t// Draw vertex point
 \t\tPoint x y
-
-\t// Draw polygon from buffer & clear it
 \tPoly`,
     input: `2
 3
@@ -40,12 +29,9 @@ rep t:
   },
   points: {
     label: "Points Cloud",
-    format: `// Read number of points
-Read n
-
+    format: `Read n
 rep n:
 \tRead x y
-\t// Draw point with label
 \tPoint x y`,
     input: `10
 10 10
@@ -61,13 +47,9 @@ rep n:
   },
   segments: {
     label: "Line Segments",
-    format: `// Read number of segments
-Read n
-
+    format: `Read n
 rep n:
-\t// Read x1 y1 x2 y2
 \tRead x1 y1 x2 y2
-\t// Draw segment
 \tSeg x1 y1 x2 y2`,
     input: `5
 0 0 50 50
@@ -78,11 +60,8 @@ rep n:
   },
   circles: {
     label: "Circles",
-    format: `// Read number of circles
-Read n
-
+    format: `Read n
 rep n:
-\t// Read x y r
 \tRead x y r
 \tCircle x y r`,
     input: `4
@@ -93,15 +72,11 @@ rep n:
   },
   polygon_simple: {
     label: "Simple Polygon",
-    format: `// Read N vertices
-Read n
-
+    format: `Read n
 rep n:
 \tRead x y
 \tPush x y
 \tPoint x y
-
-// Draw polygon
 Poly`,
     input: `5
 0 0
@@ -112,11 +87,9 @@ Poly`,
   },
   lines: {
       label: "Lines",
-      format: `// Read N lines defined by 2 points
-Read n
+      format: `Read n
 rep n:
 \tRead x1 y1 x2 y2
-\t// Draw infinite line passing through p1, p2
 \tLine x1 y1 x2 y2`,
       input: `3
 0 0 1 1
@@ -125,7 +98,35 @@ rep n:
   }
 };
 
-const INITIAL_KEY = 'default';
+const INITIAL_KEY = 'points';
+
+const ID_TOGGLE_OPTIONS = [
+    { 
+        type: ShapeType.POINT, 
+        icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5" /></svg>,
+        title: "Points"
+    },
+    { 
+        type: ShapeType.SEGMENT, 
+        icon: <svg className="w-4 h-4" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="20" x2="20" y2="4" /></svg>,
+        title: "Segments"
+    },
+    { 
+        type: ShapeType.LINE, 
+        icon: <svg className="w-4 h-4" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><line x1="2" y1="22" x2="22" y2="2" /><path d="M19 2L22 2L22 5" fill="none"/><path d="M5 22L2 22L2 19" fill="none"/></svg>,
+        title: "Lines"
+    },
+    { 
+        type: ShapeType.CIRCLE, 
+        icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="7" /></svg>,
+        title: "Circles"
+    },
+    { 
+        type: ShapeType.POLYGON, 
+        icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4L4 20L20 20L12 4Z" /></svg>,
+        title: "Polygons"
+    }
+];
 
 function App() {
   const [inputText, setInputText] = useState(SNIPPETS[INITIAL_KEY].input);
@@ -140,7 +141,9 @@ function App() {
   // Right panel state
   const [isObjectListOpen, setIsObjectListOpen] = useState(false);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
-  const [showIds, setShowIds] = useState(false);
+  
+  // ID visibility state: Default to None
+  const [visibleIdTypes, setVisibleIdTypes] = useState<ShapeType[]>([]);
 
   const formatInputRef = useRef<HTMLTextAreaElement>(null);
   const visualizerRef = useRef<VisualizerHandle>(null);
@@ -306,6 +309,14 @@ function App() {
       setSelectedShapeId(prev => prev === id ? null : id);
   };
 
+  const toggleIdType = (type: ShapeType) => {
+      setVisibleIdTypes(prev => 
+          prev.includes(type) 
+              ? prev.filter(t => t !== type) 
+              : [...prev, type]
+      );
+  };
+
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-200 font-sans">
       {/* Header */}
@@ -325,9 +336,6 @@ function App() {
                <ListBulletIcon className="w-4 h-4" />
                Objects
             </button>
-            <a href="https://github.com/google/genai" target="_blank" rel="noreferrer" className="text-xs text-slate-500 hover:text-slate-300 transition">
-                 Powered by React & Canvas
-            </a>
         </div>
       </header>
 
@@ -446,19 +454,37 @@ function App() {
                     ref={visualizerRef}
                     shapes={parsedShapes} 
                     highlightedShapeId={selectedShapeId}
-                    showIds={showIds}
+                    visibleIdTypes={visibleIdTypes}
                 />
                 
                 {/* Visualizer Controls Overlay */}
                 <div className="absolute top-4 right-4 flex flex-col gap-2 pointer-events-none">
                      <div className="flex flex-col gap-2 pointer-events-auto">
-                         <button 
-                           onClick={() => setShowIds(!showIds)}
-                           className={`p-2 rounded border shadow-lg transition flex items-center justify-center ${showIds ? 'bg-yellow-600/80 border-yellow-500 text-white' : 'bg-slate-800/80 backdrop-blur border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
-                           title="Toggle IDs"
-                          >
-                           <TagIcon className="w-5 h-5" />
-                         </button>
+                         
+                         {/* ID Toggle Button with Hover Menu */}
+                         <div className="group relative flex items-center justify-end">
+                             {/* Flyout Menu */}
+                             <div className="absolute right-full mr-2 hidden group-hover:flex bg-slate-800/90 backdrop-blur border border-slate-700 rounded p-1 gap-1 shadow-xl transition-all">
+                                 {ID_TOGGLE_OPTIONS.map((opt) => (
+                                     <button 
+                                        key={opt.type}
+                                        onClick={() => toggleIdType(opt.type)}
+                                        className={`p-1.5 rounded border transition-colors ${visibleIdTypes.includes(opt.type) ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-700 border-slate-600 text-slate-400 hover:bg-slate-600'}`}
+                                        title={`Toggle ${opt.title} IDs`}
+                                     >
+                                         {opt.icon}
+                                     </button>
+                                 ))}
+                             </div>
+
+                             <button 
+                               className={`p-2 rounded border shadow-lg transition flex items-center justify-center ${visibleIdTypes.length > 0 ? 'bg-yellow-600/80 border-yellow-500 text-white' : 'bg-slate-800/80 backdrop-blur border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                               title="Toggle IDs (Hover for options)"
+                             >
+                               <TagIcon className="w-5 h-5" />
+                             </button>
+                         </div>
+
                          <button 
                            onClick={() => visualizerRef.current?.resetView()}
                            className="bg-slate-800/80 backdrop-blur p-2 rounded text-slate-400 hover:text-white border border-slate-700 shadow-lg hover:bg-slate-700 transition flex items-center justify-center"

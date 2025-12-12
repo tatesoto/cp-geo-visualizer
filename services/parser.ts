@@ -30,6 +30,7 @@ class ParserContext {
   variables: Map<string, number>;
   shapes: Shape[];
   pointBuffer: {x: number, y: number}[];
+  counts: Record<ShapeType, number>;
 
   constructor(input: string) {
     // Tokenize input by splitting whitespace
@@ -47,6 +48,14 @@ class ParserContext {
     this.variables = new Map();
     this.shapes = [];
     this.pointBuffer = [];
+    this.counts = {
+      [ShapeType.POINT]: 0,
+      [ShapeType.LINE]: 0,
+      [ShapeType.SEGMENT]: 0,
+      [ShapeType.CIRCLE]: 0,
+      [ShapeType.POLYGON]: 0,
+      [ShapeType.TEXT]: 0,
+    };
   }
 
   hasNext() {
@@ -77,6 +86,20 @@ class ParserContext {
 
     // 3. Error
     throw new Error(`Undefined variable or invalid number: '${valStr}'`);
+  }
+
+  generateId(type: ShapeType): string {
+    const count = this.counts[type]++;
+    let prefix = '';
+    switch (type) {
+      case ShapeType.POINT: prefix = 'P'; break;
+      case ShapeType.LINE: prefix = 'L'; break;
+      case ShapeType.SEGMENT: prefix = 'S'; break;
+      case ShapeType.CIRCLE: prefix = 'C'; break;
+      case ShapeType.POLYGON: prefix = 'Pg'; break;
+      case ShapeType.TEXT: prefix = 'Tx'; break;
+    }
+    return `${prefix}${count}`;
   }
 }
 
@@ -249,12 +272,12 @@ function executeShapeCommand(command: string, args: (string|number)[], ctx: Pars
   }
 
   const nums = args.filter(a => typeof a === 'number') as number[];
-  const id = ctx.shapes.length.toString();
   const color = getColor();
   const label = getLabel();
 
   if (command === 'point' || command === 'p') {
     if (nums.length >= 2) {
+      const id = ctx.generateId(ShapeType.POINT);
       ctx.shapes.push({ id, type: ShapeType.POINT, x: nums[0], y: nums[1], color, label });
     }
   } else if (command === 'push') {
@@ -263,19 +286,23 @@ function executeShapeCommand(command: string, args: (string|number)[], ctx: Pars
     }
   } else if (command === 'line' || command === 'l') {
     if (nums.length >= 4) {
+      const id = ctx.generateId(ShapeType.LINE);
       ctx.shapes.push({ id, type: ShapeType.LINE, p1: { x: nums[0], y: nums[1] }, p2: { x: nums[2], y: nums[3] }, color, label });
     }
   } else if (command === 'segment' || command === 's' || command === 'seg') {
     if (nums.length >= 4) {
+      const id = ctx.generateId(ShapeType.SEGMENT);
       ctx.shapes.push({ id, type: ShapeType.SEGMENT, p1: { x: nums[0], y: nums[1] }, p2: { x: nums[2], y: nums[3] }, color, label });
     }
   } else if (command === 'circle' || command === 'c') {
     if (nums.length >= 3) {
+      const id = ctx.generateId(ShapeType.CIRCLE);
       ctx.shapes.push({ id, type: ShapeType.CIRCLE, x: nums[0], y: nums[1], r: nums[2], color, label });
     }
   } else if (command === 'poly' || command === 'polygon') {
     if (nums.length === 0) {
        if (ctx.pointBuffer.length > 0) {
+           const id = ctx.generateId(ShapeType.POLYGON);
            ctx.shapes.push({ id, type: ShapeType.POLYGON, points: [...ctx.pointBuffer], color, label });
            ctx.pointBuffer = [];
        }
@@ -284,10 +311,12 @@ function executeShapeCommand(command: string, args: (string|number)[], ctx: Pars
       for(let k=0; k<nums.length; k+=2) {
         points.push({x: nums[k], y: nums[k+1]});
       }
+      const id = ctx.generateId(ShapeType.POLYGON);
       ctx.shapes.push({ id, type: ShapeType.POLYGON, points, color, label });
     }
   } else if (command === 'text') {
       if (nums.length >= 2 && label) {
+          const id = ctx.generateId(ShapeType.TEXT);
           ctx.shapes.push({
               id, type: ShapeType.TEXT, x: nums[0], y: nums[1], content: label, fontSize: nums[2] || 12, color
           });
