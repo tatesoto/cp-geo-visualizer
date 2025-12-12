@@ -1,0 +1,5 @@
+{
+  "name": "Copy of CP Geometry Visualizer",
+  "description": "A high-performance geometry visualizer for competitive programming debugging. Supports custom input formats, large coordinates, and 10^5+ shapes.",
+  "requestFramePermissions": []
+}
