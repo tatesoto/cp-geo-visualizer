@@ -1,13 +1,17 @@
-import React, { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useLayoutEffect, forwardRef, useImperativeHandle } from 'react';
 import { Shape, ShapeType, Viewport } from '../types';
 import { getBoundingBox, worldToScreen, screenToWorld } from '../services/geometry';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+
+export interface VisualizerHandle {
+  resetView: () => void;
+}
 
 interface VisualizerProps {
   shapes: Shape[];
+  highlightedShapeId?: string | null;
 }
 
-const Visualizer: React.FC<VisualizerProps> = ({ shapes }) => {
+const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, highlightedShapeId }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -15,18 +19,15 @@ const Visualizer: React.FC<VisualizerProps> = ({ shapes }) => {
   const viewportRef = useRef<Viewport>({ centerX: 0, centerY: 0, scale: 50 });
   const requestRef = useRef<number>(0);
   const shapesRef = useRef<Shape[]>(shapes);
+  const highlightedRef = useRef<string | null | undefined>(highlightedShapeId);
 
   // State only for UI overlay elements that don't need 60fps updates
   const [hoverInfo, setHoverInfo] = useState<{x: number, y: number, text: string} | null>(null);
 
-  // Update shapes ref when prop changes
-  useEffect(() => {
-    shapesRef.current = shapes;
-    if (shapes.length > 0) {
-        fitToShapes();
-    }
-    requestRender();
-  }, [shapes]);
+  const requestRender = () => {
+    if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    requestRef.current = requestAnimationFrame(draw);
+  };
 
   const fitToShapes = () => {
     const bbox = getBoundingBox(shapesRef.current);
@@ -53,10 +54,23 @@ const Visualizer: React.FC<VisualizerProps> = ({ shapes }) => {
     requestRender();
   };
 
-  const requestRender = () => {
-    if (requestRef.current) cancelAnimationFrame(requestRef.current);
-    requestRef.current = requestAnimationFrame(draw);
-  };
+  useImperativeHandle(ref, () => ({
+    resetView: () => {
+      fitToShapes();
+    }
+  }));
+
+  // Update shapes and auto-fit
+  useEffect(() => {
+    shapesRef.current = shapes;
+    fitToShapes();
+  }, [shapes]);
+
+  // Update highlight
+  useEffect(() => {
+    highlightedRef.current = highlightedShapeId;
+    requestRender();
+  }, [highlightedShapeId]);
 
   const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number, viewport: Viewport) => {
     const { centerX, centerY, scale } = viewport;
@@ -119,6 +133,149 @@ const Visualizer: React.FC<VisualizerProps> = ({ shapes }) => {
     }
   };
 
+  const drawShape = (ctx: CanvasRenderingContext2D, shape: Shape, viewport: Viewport, width: number, height: number, isHighlight: boolean) => {
+      const pointRadius = Math.max(3, 4); 
+      const baseLineWidth = 2; 
+
+      ctx.beginPath();
+      
+      if (isHighlight) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = baseLineWidth + 3;
+          ctx.shadowColor = shape.color || '#fff';
+          ctx.shadowBlur = 10;
+      } else {
+          ctx.strokeStyle = shape.color || '#fff';
+          ctx.lineWidth = baseLineWidth;
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = shape.color || '#fff';
+      }
+
+      switch (shape.type) {
+        case ShapeType.POINT: {
+          const s = worldToScreen(shape.x, shape.y, viewport, width, height);
+          ctx.arc(s.x, s.y, isHighlight ? pointRadius + 2 : pointRadius, 0, Math.PI * 2);
+          if (isHighlight) {
+              ctx.stroke();
+              ctx.fillStyle = shape.color || '#fff';
+              ctx.fill();
+          } else {
+              ctx.fill();
+          }
+          
+          if (shape.label && !isHighlight) {
+              ctx.font = '12px sans-serif';
+              ctx.fillStyle = '#cbd5e1';
+              ctx.fillText(shape.label, s.x + 8, s.y - 8);
+          }
+          break;
+        }
+        case ShapeType.LINE: {
+            const topLeft = screenToWorld(0, 0, viewport, width, height);
+            const bottomRight = screenToWorld(width, height, viewport, width, height);
+            
+            const minX = Math.min(topLeft.x, bottomRight.x);
+            const maxX = Math.max(topLeft.x, bottomRight.x);
+            const minY = Math.min(topLeft.y, bottomRight.y);
+            const maxY = Math.max(topLeft.y, bottomRight.y);
+
+            const worldWidth = maxX - minX;
+            const worldHeight = maxY - minY;
+            const diagonal = Math.sqrt(worldWidth * worldWidth + worldHeight * worldHeight);
+
+            const dx = shape.p2.x - shape.p1.x;
+            const dy = shape.p2.y - shape.p1.y;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            
+            if (len === 0) break;
+
+            const ndx = dx / len;
+            const ndy = dy / len;
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            const t = (centerX - shape.p1.x) * ndx + (centerY - shape.p1.y) * ndy;
+            const closestX = shape.p1.x + t * ndx;
+            const closestY = shape.p1.y + t * ndy;
+            const extend = Math.max(diagonal, 100) * 1.5; 
+
+            const pStart = { x: closestX - ndx * extend, y: closestY - ndy * extend };
+            const pEnd = { x: closestX + ndx * extend, y: closestY + ndy * extend };
+
+            const s1 = worldToScreen(pStart.x, pStart.y, viewport, width, height);
+            const s2 = worldToScreen(pEnd.x, pEnd.y, viewport, width, height);
+
+            ctx.moveTo(s1.x, s1.y);
+            ctx.lineTo(s2.x, s2.y);
+            ctx.stroke();
+            break;
+        }
+        case ShapeType.SEGMENT: {
+          const s1 = worldToScreen(shape.p1.x, shape.p1.y, viewport, width, height);
+          const s2 = worldToScreen(shape.p2.x, shape.p2.y, viewport, width, height);
+          ctx.moveTo(s1.x, s1.y);
+          ctx.lineTo(s2.x, s2.y);
+          ctx.stroke();
+          
+          if (!isHighlight) {
+            ctx.beginPath();
+            ctx.arc(s1.x, s1.y, 2, 0, Math.PI*2);
+            ctx.arc(s2.x, s2.y, 2, 0, Math.PI*2);
+            ctx.fill();
+          }
+          break;
+        }
+        case ShapeType.CIRCLE: {
+          const center = worldToScreen(shape.x, shape.y, viewport, width, height);
+          const radiusScreen = shape.r * viewport.scale;
+          ctx.beginPath();
+          ctx.arc(center.x, center.y, radiusScreen, 0, Math.PI * 2);
+          ctx.stroke();
+          if (!isHighlight) {
+            ctx.globalAlpha = 0.1;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+          }
+          break;
+        }
+        case ShapeType.POLYGON: {
+            if (shape.points.length > 0) {
+                const start = worldToScreen(shape.points[0].x, shape.points[0].y, viewport, width, height);
+                ctx.moveTo(start.x, start.y);
+                for (let i = 1; i < shape.points.length; i++) {
+                    const p = worldToScreen(shape.points[i].x, shape.points[i].y, viewport, width, height);
+                    ctx.lineTo(p.x, p.y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+                
+                ctx.globalAlpha = isHighlight ? 0.3 : 0.1;
+                ctx.fillStyle = shape.color || '#fff';
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+            break;
+        }
+        case ShapeType.TEXT: {
+            const s = worldToScreen(shape.x, shape.y, viewport, width, height);
+            ctx.font = `${shape.fontSize || 12}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            if (isHighlight) {
+                const metrics = ctx.measureText(shape.content);
+                const h = (shape.fontSize || 12);
+                ctx.strokeStyle = shape.color || '#fff';
+                ctx.strokeRect(s.x - metrics.width/2 - 4, s.y - h/2 - 4, metrics.width + 8, h + 8);
+            }
+            ctx.fillStyle = isHighlight ? '#fff' : (shape.color || '#fff');
+            ctx.fillText(shape.content, s.x, s.y);
+            break;
+        }
+      }
+      
+      // Reset shadow
+      ctx.shadowBlur = 0;
+  }
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -143,148 +300,39 @@ const Visualizer: React.FC<VisualizerProps> = ({ shapes }) => {
     ctx.scale(dpr, dpr);
     
     const viewport = viewportRef.current;
-    
+    const width = rect.width;
+    const height = rect.height;
+
     // Draw Grid first
-    drawGrid(ctx, rect.width, rect.height, viewport);
+    drawGrid(ctx, width, height, viewport);
 
     // Draw Axes
-    const origin = worldToScreen(0, 0, viewport, rect.width, rect.height);
+    const origin = worldToScreen(0, 0, viewport, width, height);
     ctx.beginPath();
     ctx.strokeStyle = '#475569'; // Slate 600 - brighter axis
     ctx.lineWidth = 2;
     // X axis
     ctx.moveTo(0, origin.y);
-    ctx.lineTo(rect.width, origin.y);
+    ctx.lineTo(width, origin.y);
     // Y axis
     ctx.moveTo(origin.x, 0);
-    ctx.lineTo(origin.x, rect.height);
+    ctx.lineTo(origin.x, height);
     ctx.stroke();
 
-    const pointRadius = Math.max(3, 4); 
-    const lineWidth = 2; 
-
+    // Standard Draw Loop
     shapesRef.current.forEach(shape => {
-      ctx.beginPath();
-      ctx.strokeStyle = shape.color || '#fff';
-      ctx.fillStyle = shape.color || '#fff';
-      ctx.lineWidth = lineWidth;
-
-      switch (shape.type) {
-        case ShapeType.POINT: {
-          const s = worldToScreen(shape.x, shape.y, viewport, rect.width, rect.height);
-          ctx.arc(s.x, s.y, pointRadius, 0, Math.PI * 2);
-          ctx.fill();
-          if (shape.label) {
-              ctx.font = '12px sans-serif';
-              ctx.fillStyle = '#cbd5e1';
-              ctx.fillText(shape.label, s.x + 8, s.y - 8);
-          }
-          break;
-        }
-        case ShapeType.LINE: {
-            // Robust infinite line drawing
-            // 1. Calculate the visible world bounds
-            const topLeft = screenToWorld(0, 0, viewport, rect.width, rect.height);
-            const bottomRight = screenToWorld(rect.width, rect.height, viewport, rect.width, rect.height);
-            
-            const minX = Math.min(topLeft.x, bottomRight.x);
-            const maxX = Math.max(topLeft.x, bottomRight.x);
-            const minY = Math.min(topLeft.y, bottomRight.y);
-            const maxY = Math.max(topLeft.y, bottomRight.y);
-
-            const worldWidth = maxX - minX;
-            const worldHeight = maxY - minY;
-            const diagonal = Math.sqrt(worldWidth * worldWidth + worldHeight * worldHeight);
-
-            const dx = shape.p2.x - shape.p1.x;
-            const dy = shape.p2.y - shape.p1.y;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            
-            if (len === 0) break; // Degenerate line
-
-            const ndx = dx / len;
-            const ndy = dy / len;
-
-            // Find point on line closest to viewport center
-            const centerX = (minX + maxX) / 2;
-            const centerY = (minY + maxY) / 2;
-            
-            // Project (center - p1) onto direction to find parameter t
-            const t = (centerX - shape.p1.x) * ndx + (centerY - shape.p1.y) * ndy;
-            const closestX = shape.p1.x + t * ndx;
-            const closestY = shape.p1.y + t * ndy;
-
-            // Extend in both directions enough to cover the viewport
-            // Extending by diagonal length is sufficient if centered
-            // Use a slight multiplier to be safe
-            const extend = Math.max(diagonal, 100) * 1.5; 
-
-            const pStart = {
-                x: closestX - ndx * extend,
-                y: closestY - ndy * extend
-            };
-            const pEnd = {
-                x: closestX + ndx * extend,
-                y: closestY + ndy * extend
-            };
-
-            const s1 = worldToScreen(pStart.x, pStart.y, viewport, rect.width, rect.height);
-            const s2 = worldToScreen(pEnd.x, pEnd.y, viewport, rect.width, rect.height);
-
-            ctx.moveTo(s1.x, s1.y);
-            ctx.lineTo(s2.x, s2.y);
-            ctx.stroke();
-            break;
-        }
-        case ShapeType.SEGMENT: {
-          const s1 = worldToScreen(shape.p1.x, shape.p1.y, viewport, rect.width, rect.height);
-          const s2 = worldToScreen(shape.p2.x, shape.p2.y, viewport, rect.width, rect.height);
-          ctx.moveTo(s1.x, s1.y);
-          ctx.lineTo(s2.x, s2.y);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(s1.x, s1.y, 2, 0, Math.PI*2);
-          ctx.arc(s2.x, s2.y, 2, 0, Math.PI*2);
-          ctx.fill();
-          break;
-        }
-        case ShapeType.CIRCLE: {
-          const center = worldToScreen(shape.x, shape.y, viewport, rect.width, rect.height);
-          const radiusScreen = shape.r * viewport.scale;
-          ctx.beginPath();
-          ctx.arc(center.x, center.y, radiusScreen, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.globalAlpha = 0.1;
-          ctx.fill();
-          ctx.globalAlpha = 1.0;
-          break;
-        }
-        case ShapeType.POLYGON: {
-            if (shape.points.length > 0) {
-                const start = worldToScreen(shape.points[0].x, shape.points[0].y, viewport, rect.width, rect.height);
-                ctx.moveTo(start.x, start.y);
-                for (let i = 1; i < shape.points.length; i++) {
-                    const p = worldToScreen(shape.points[i].x, shape.points[i].y, viewport, rect.width, rect.height);
-                    ctx.lineTo(p.x, p.y);
-                }
-                ctx.closePath();
-                ctx.stroke();
-                ctx.globalAlpha = 0.1;
-                ctx.fill();
-                ctx.globalAlpha = 1.0;
-            }
-            break;
-        }
-        case ShapeType.TEXT: {
-            const s = worldToScreen(shape.x, shape.y, viewport, rect.width, rect.height);
-            ctx.font = `${shape.fontSize || 12}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(shape.content, s.x, s.y);
-            break;
-        }
-      }
+        // Skip highlighted shape, draw it last
+        if (shape.id === highlightedRef.current) return;
+        drawShape(ctx, shape, viewport, width, height, false);
     });
+
+    // Draw Highlighted Shape Last (on top)
+    if (highlightedRef.current) {
+        const shape = shapesRef.current.find(s => s.id === highlightedRef.current);
+        if (shape) {
+            drawShape(ctx, shape, viewport, width, height, true);
+        }
+    }
 
   }, []);
 
@@ -310,7 +358,6 @@ const Visualizer: React.FC<VisualizerProps> = ({ shapes }) => {
 
     const newScale = viewport.scale * zoomFactor;
     
-    // Adjust center so worldMouse remains at mouseX, mouseY
     const newCenterX = worldMouse.x - (mouseX - rect.width / 2) / newScale;
     const newCenterY = worldMouse.y - (mouseY - rect.height / 2) / -newScale;
 
@@ -384,11 +431,17 @@ const Visualizer: React.FC<VisualizerProps> = ({ shapes }) => {
     isDraggingRef.current = false;
   };
 
-  // Resize observer
+  // Resize observer for layout changes
   useLayoutEffect(() => {
-    const handleResize = () => requestRender();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+        requestRender();
+    });
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
   }, []);
 
   return (
@@ -410,17 +463,6 @@ const Visualizer: React.FC<VisualizerProps> = ({ shapes }) => {
         style={{ width: '100%', height: '100%' }}
       />
       
-      {/* Controls Overlay */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2">
-           <button 
-             onClick={fitToShapes}
-             className="bg-slate-800/80 hover:bg-slate-700 text-white p-2 rounded shadow backdrop-blur-sm transition-colors"
-             title="Reset View"
-            >
-               <ArrowPathIcon className="w-5 h-5" />
-           </button>
-      </div>
-
       {/* HUD Info */}
       <div className="absolute bottom-4 right-4 bg-slate-800/90 backdrop-blur p-3 rounded shadow-lg text-xs text-slate-300 pointer-events-none select-none border border-slate-700">
         <div className="font-mono">Objects: {shapes.length}</div>
@@ -441,6 +483,8 @@ const Visualizer: React.FC<VisualizerProps> = ({ shapes }) => {
       )}
     </div>
   );
-};
+});
+
+Visualizer.displayName = 'Visualizer';
 
 export default Visualizer;

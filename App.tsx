@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Visualizer from './components/Visualizer';
+import Visualizer, { VisualizerHandle } from './components/Visualizer';
+import ObjectList from './components/ObjectList';
 import { parseInput } from './services/parser';
 import { Shape } from './types';
-import { ArrowPathIcon, QuestionMarkCircleIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, QuestionMarkCircleIcon, ChevronDownIcon, ChevronRightIcon, ListBulletIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 
 const SNIPPETS = {
   default: {
@@ -135,8 +136,13 @@ function App() {
   // Collapsible state
   const [isFormatOpen, setIsFormatOpen] = useState(true);
   const [isInputOpen, setIsInputOpen] = useState(true);
+  
+  // Right panel state
+  const [isObjectListOpen, setIsObjectListOpen] = useState(false);
+  const [highlightedShapeId, setHighlightedShapeId] = useState<string | null>(null);
 
   const formatInputRef = useRef<HTMLTextAreaElement>(null);
+  const visualizerRef = useRef<VisualizerHandle>(null);
 
   const handleParse = () => {
     const result = parseInput(formatText, inputText);
@@ -305,9 +311,16 @@ function App() {
         </div>
         
         <div className="flex items-center gap-4">
-             <a href="https://github.com/google/genai" target="_blank" rel="noreferrer" className="text-xs text-slate-500 hover:text-slate-300 transition">
+            <button
+               onClick={() => setIsObjectListOpen(!isObjectListOpen)}
+               className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold border transition-all ${isObjectListOpen ? 'bg-blue-600/20 text-blue-300 border-blue-600/50' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'}`}
+            >
+               <ListBulletIcon className="w-4 h-4" />
+               Objects
+            </button>
+            <a href="https://github.com/google/genai" target="_blank" rel="noreferrer" className="text-xs text-slate-500 hover:text-slate-300 transition">
                  Powered by React & Canvas
-             </a>
+            </a>
         </div>
       </header>
 
@@ -419,9 +432,36 @@ function App() {
           </div>
         </div>
 
-        {/* Right Panel: Visualization */}
-        <div className="flex-1 relative bg-black">
-          <Visualizer shapes={parsedShapes} />
+        {/* Right Panel: Visualization & Object List */}
+        <div className="flex-1 flex overflow-hidden bg-black relative">
+            <div className="flex-1 relative min-w-0">
+                <Visualizer 
+                    ref={visualizerRef}
+                    shapes={parsedShapes} 
+                    highlightedShapeId={highlightedShapeId}
+                />
+                
+                {/* Visualizer Controls Overlay */}
+                <div className="absolute top-4 right-4 flex flex-col gap-2">
+                     <button 
+                       onClick={() => visualizerRef.current?.resetView()}
+                       className="bg-slate-800/80 backdrop-blur p-2 rounded text-slate-400 hover:text-white border border-slate-700 shadow-lg hover:bg-slate-700 transition"
+                       title="Fit to Screen"
+                      >
+                       <ArrowsPointingInIcon className="w-5 h-5" />
+                     </button>
+                </div>
+            </div>
+            
+            {/* Slide-in Object List */}
+            {isObjectListOpen && (
+                <ObjectList 
+                    shapes={parsedShapes} 
+                    highlightedShapeId={highlightedShapeId}
+                    onHoverShape={setHighlightedShapeId}
+                    onClose={() => setIsObjectListOpen(false)}
+                />
+            )}
         </div>
       </div>
     </div>
