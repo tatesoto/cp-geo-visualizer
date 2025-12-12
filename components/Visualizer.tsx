@@ -9,9 +9,10 @@ export interface VisualizerHandle {
 interface VisualizerProps {
   shapes: Shape[];
   highlightedShapeId?: string | null;
+  showIds?: boolean;
 }
 
-const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, highlightedShapeId }, ref) => {
+const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, highlightedShapeId, showIds = false }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -20,6 +21,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
   const requestRef = useRef<number>(0);
   const shapesRef = useRef<Shape[]>(shapes);
   const highlightedRef = useRef<string | null | undefined>(highlightedShapeId);
+  const showIdsRef = useRef(showIds);
 
   // State only for UI overlay elements that don't need 60fps updates
   const [hoverInfo, setHoverInfo] = useState<{x: number, y: number, text: string} | null>(null);
@@ -66,11 +68,12 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
     fitToShapes();
   }, [shapes]);
 
-  // Update highlight
+  // Update props trigger render
   useEffect(() => {
     highlightedRef.current = highlightedShapeId;
+    showIdsRef.current = showIds;
     requestRender();
-  }, [highlightedShapeId]);
+  }, [highlightedShapeId, showIds]);
 
   const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number, viewport: Viewport) => {
     const { centerX, centerY, scale } = viewport;
@@ -151,9 +154,13 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
           ctx.fillStyle = shape.color || '#fff';
       }
 
+      // Keep track of a reference point to draw ID near
+      let labelPoint = { x: 0, y: 0 };
+
       switch (shape.type) {
         case ShapeType.POINT: {
           const s = worldToScreen(shape.x, shape.y, viewport, width, height);
+          labelPoint = s;
           ctx.arc(s.x, s.y, isHighlight ? pointRadius + 2 : pointRadius, 0, Math.PI * 2);
           if (isHighlight) {
               ctx.stroke();
@@ -207,6 +214,10 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
             ctx.moveTo(s1.x, s1.y);
             ctx.lineTo(s2.x, s2.y);
             ctx.stroke();
+            
+            // Use closest point to center as label point
+            const sCenter = worldToScreen(closestX, closestY, viewport, width, height);
+            labelPoint = sCenter;
             break;
         }
         case ShapeType.SEGMENT: {
@@ -216,6 +227,8 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
           ctx.lineTo(s2.x, s2.y);
           ctx.stroke();
           
+          labelPoint = { x: (s1.x + s2.x)/2, y: (s1.y + s2.y)/2 };
+
           if (!isHighlight) {
             ctx.beginPath();
             ctx.arc(s1.x, s1.y, 2, 0, Math.PI*2);
@@ -230,6 +243,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
           ctx.beginPath();
           ctx.arc(center.x, center.y, radiusScreen, 0, Math.PI * 2);
           ctx.stroke();
+          labelPoint = center;
           if (!isHighlight) {
             ctx.globalAlpha = 0.1;
             ctx.fill();
@@ -240,6 +254,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
         case ShapeType.POLYGON: {
             if (shape.points.length > 0) {
                 const start = worldToScreen(shape.points[0].x, shape.points[0].y, viewport, width, height);
+                labelPoint = start;
                 ctx.moveTo(start.x, start.y);
                 for (let i = 1; i < shape.points.length; i++) {
                     const p = worldToScreen(shape.points[i].x, shape.points[i].y, viewport, width, height);
@@ -257,6 +272,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
         }
         case ShapeType.TEXT: {
             const s = worldToScreen(shape.x, shape.y, viewport, width, height);
+            labelPoint = s;
             ctx.font = `${shape.fontSize || 12}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -274,6 +290,29 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
       
       // Reset shadow
       ctx.shadowBlur = 0;
+
+      // Draw ID if enabled
+      // Condition: Show if showIds is ON AND (Shape is Point OR Shape is Highlighted)
+      // This satisfies "Default to not showing IDs for shapes other than points"
+      if (showIdsRef.current && (shape.type === ShapeType.POINT || isHighlight)) {
+          ctx.font = '10px monospace';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'bottom';
+          
+          const text = `#${shape.id}`;
+          const x = labelPoint.x + 4;
+          const y = labelPoint.y - 4;
+
+          // Black stroke for better contrast
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 3;
+          ctx.lineJoin = 'round';
+          ctx.strokeText(text, x, y);
+
+          // White text
+          ctx.fillStyle = '#ffffff'; 
+          ctx.fillText(text, x, y);
+      }
   }
 
   const draw = useCallback(() => {

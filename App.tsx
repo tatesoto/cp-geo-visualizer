@@ -3,7 +3,7 @@ import Visualizer, { VisualizerHandle } from './components/Visualizer';
 import ObjectList from './components/ObjectList';
 import { parseInput } from './services/parser';
 import { Shape } from './types';
-import { ArrowPathIcon, QuestionMarkCircleIcon, ChevronDownIcon, ChevronRightIcon, ListBulletIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, QuestionMarkCircleIcon, ChevronDownIcon, ChevronRightIcon, ListBulletIcon, ArrowsPointingInIcon, TagIcon } from '@heroicons/react/24/outline';
 
 const SNIPPETS = {
   default: {
@@ -139,7 +139,8 @@ function App() {
   
   // Right panel state
   const [isObjectListOpen, setIsObjectListOpen] = useState(false);
-  const [highlightedShapeId, setHighlightedShapeId] = useState<string | null>(null);
+  const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+  const [showIds, setShowIds] = useState(false);
 
   const formatInputRef = useRef<HTMLTextAreaElement>(null);
   const visualizerRef = useRef<VisualizerHandle>(null);
@@ -151,6 +152,8 @@ function App() {
     } else {
       setError(null);
       setParsedShapes(result.shapes);
+      // Reset selection when shapes change
+      setSelectedShapeId(null);
     }
   };
 
@@ -299,6 +302,10 @@ function App() {
     }
   };
 
+  const toggleSelection = (id: string | null) => {
+      setSelectedShapeId(prev => prev === id ? null : id);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-200 font-sans">
       {/* Header */}
@@ -438,18 +445,28 @@ function App() {
                 <Visualizer 
                     ref={visualizerRef}
                     shapes={parsedShapes} 
-                    highlightedShapeId={highlightedShapeId}
+                    highlightedShapeId={selectedShapeId}
+                    showIds={showIds}
                 />
                 
                 {/* Visualizer Controls Overlay */}
-                <div className="absolute top-4 right-4 flex flex-col gap-2">
-                     <button 
-                       onClick={() => visualizerRef.current?.resetView()}
-                       className="bg-slate-800/80 backdrop-blur p-2 rounded text-slate-400 hover:text-white border border-slate-700 shadow-lg hover:bg-slate-700 transition"
-                       title="Fit to Screen"
-                      >
-                       <ArrowsPointingInIcon className="w-5 h-5" />
-                     </button>
+                <div className="absolute top-4 right-4 flex flex-col gap-2 pointer-events-none">
+                     <div className="flex flex-col gap-2 pointer-events-auto">
+                         <button 
+                           onClick={() => setShowIds(!showIds)}
+                           className={`p-2 rounded border shadow-lg transition flex items-center justify-center ${showIds ? 'bg-yellow-600/80 border-yellow-500 text-white' : 'bg-slate-800/80 backdrop-blur border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                           title="Toggle IDs"
+                          >
+                           <TagIcon className="w-5 h-5" />
+                         </button>
+                         <button 
+                           onClick={() => visualizerRef.current?.resetView()}
+                           className="bg-slate-800/80 backdrop-blur p-2 rounded text-slate-400 hover:text-white border border-slate-700 shadow-lg hover:bg-slate-700 transition flex items-center justify-center"
+                           title="Fit to Screen"
+                          >
+                           <ArrowsPointingInIcon className="w-5 h-5" />
+                         </button>
+                     </div>
                 </div>
             </div>
             
@@ -457,8 +474,8 @@ function App() {
             {isObjectListOpen && (
                 <ObjectList 
                     shapes={parsedShapes} 
-                    highlightedShapeId={highlightedShapeId}
-                    onHoverShape={setHighlightedShapeId}
+                    highlightedShapeId={selectedShapeId}
+                    onSelectShape={toggleSelection}
                     onClose={() => setIsObjectListOpen(false)}
                 />
             )}
