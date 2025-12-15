@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Shape, ShapeType } from '../types';
 import { ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
@@ -8,6 +8,88 @@ interface ObjectListProps {
   onSelectShape: (id: string | null) => void;
   onClose: () => void;
 }
+
+// Simple Virtual List Component for a section
+const VirtualSection = ({ 
+    shapes, 
+    highlightedShapeId, 
+    onSelectShape, 
+    getIcon, 
+    getInfo 
+}: {
+    shapes: Shape[],
+    highlightedShapeId: string | null,
+    onSelectShape: (id: string | null) => void,
+    getIcon: (type: ShapeType) => React.ReactNode,
+    getInfo: (shape: Shape) => string
+}) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [scrollTop, setScrollTop] = useState(0);
+    const itemHeight = 44; // Approx height of one item (p-2 + content)
+    const containerHeight = 300; // Max height restriction for virtual list per section
+    
+    // We limit the height of the section to avoid super long scrolls in accordion
+    // But user needs to see all. Let's assume standard behavior:
+    // This virtual list renders *inside* the main scrollable area.
+    // Actually, nested virtualization is hard. 
+    // Standard approach: Fixed height window.
+    
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        setScrollTop(e.currentTarget.scrollTop);
+    };
+
+    const totalHeight = shapes.length * itemHeight;
+    const startIndex = Math.floor(scrollTop / itemHeight);
+    const visibleCount = Math.ceil(containerHeight / itemHeight) + 1;
+    const visibleShapes = shapes.slice(startIndex, startIndex + visibleCount);
+    const offsetY = startIndex * itemHeight;
+
+    return (
+        <div 
+            ref={containerRef}
+            onScroll={handleScroll}
+            className="overflow-y-auto border-b border-slate-800 bg-slate-900/30"
+            style={{ maxHeight: containerHeight }}
+        >
+            <div style={{ height: totalHeight, position: 'relative' }}>
+                <div style={{ transform: `translateY(${offsetY}px)` }}>
+                    {visibleShapes.map((shape) => (
+                         <div
+                            key={shape.id}
+                            onClick={() => onSelectShape(shape.id)}
+                            style={{ height: itemHeight }}
+                            className={`
+                                flex items-center gap-3 p-2 cursor-pointer transition-colors border-b border-slate-800/50 box-border
+                                ${highlightedShapeId === shape.id 
+                                ? 'bg-blue-900/30 border-blue-700/50' 
+                                : 'hover:bg-slate-800'}
+                            `}
+                        >
+                            <div 
+                                className="w-2 h-2 rounded-full shrink-0" 
+                                style={{ backgroundColor: shape.color || '#fff' }} 
+                            />
+                            <div className="text-slate-400 shrink-0">
+                                {getIcon(shape.type)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-mono text-slate-300 truncate">
+                                        ID:{shape.id}
+                                    </span>
+                                    {shape.label && <span className="text-[10px] text-yellow-500/80 bg-yellow-900/20 px-1 rounded truncate max-w-[80px]">{shape.label}</span>}
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-mono truncate">
+                                    {getInfo(shape)}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onSelectShape, onClose }) => {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -68,7 +150,6 @@ const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onS
     }
   };
 
-  // Define sort order
   const typeOrder = [
       ShapeType.POINT,
       ShapeType.SEGMENT,
@@ -103,9 +184,9 @@ const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onS
             const isOpen = openSections[type];
 
             return (
-                <div key={type} className="mb-1">
+                <div key={type} className="mb-0">
                     <div 
-                        className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur border-y border-slate-800/50 flex items-center gap-2 px-4 py-1.5 cursor-pointer hover:bg-slate-800 transition-colors shadow-sm"
+                        className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur border-y border-slate-800/50 flex items-center gap-2 px-4 py-2 cursor-pointer hover:bg-slate-800 transition-colors shadow-sm"
                         onClick={() => toggleSection(type)}
                     >
                          {isOpen ? <ChevronDownIcon className="w-3 h-3 text-slate-400" /> : <ChevronRightIcon className="w-3 h-3 text-slate-400" />}
@@ -114,39 +195,13 @@ const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onS
                     </div>
 
                     {isOpen && (
-                        <div className="px-2 mt-1 space-y-1 pb-2">
-                            {groupShapes.map((shape) => (
-                                <div
-                                    key={shape.id}
-                                    onClick={() => onSelectShape(shape.id)}
-                                    className={`
-                                        flex items-center gap-3 p-2 rounded cursor-pointer transition-colors border
-                                        ${highlightedShapeId === shape.id 
-                                        ? 'bg-blue-900/30 border-blue-700/50' 
-                                        : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'}
-                                    `}
-                                >
-                                    <div 
-                                        className="w-2 h-2 rounded-full shrink-0" 
-                                        style={{ backgroundColor: shape.color || '#fff' }} 
-                                    />
-                                    <div className="text-slate-400 shrink-0">
-                                        {getIcon(shape.type)}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs font-mono text-slate-300 truncate">
-                                                ID:{shape.id}
-                                            </span>
-                                            {shape.label && <span className="text-[10px] text-yellow-500/80 bg-yellow-900/20 px-1 rounded truncate max-w-[80px]">{shape.label}</span>}
-                                        </div>
-                                        <div className="text-[10px] text-slate-500 font-mono truncate">
-                                            {getInfo(shape)}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <VirtualSection 
+                            shapes={groupShapes}
+                            highlightedShapeId={highlightedShapeId}
+                            onSelectShape={onSelectShape}
+                            getIcon={getIcon}
+                            getInfo={getInfo}
+                        />
                     )}
                 </div>
             );

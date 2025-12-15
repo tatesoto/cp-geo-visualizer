@@ -104,8 +104,15 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
+    // Optimization: Don't draw thousands of grid lines if zoomed way out
+    // Limit grid lines to reasonable amount (e.g. 100)
+    const xLineCount = (endXWorld - startX) / step;
+    const yLineCount = (endYWorld - startY) / step;
+    const skipMultiplier = (xLineCount > 100 || yLineCount > 100) ? 5 : 1;
+    const renderStep = step * skipMultiplier;
+
     // Vertical Lines
-    for (let x = startX; x <= endXWorld; x += step) {
+    for (let x = Math.floor(startXWorld / renderStep) * renderStep; x <= endXWorld; x += renderStep) {
       const s = worldToScreen(x, 0, viewport, width, height);
       ctx.beginPath();
       ctx.moveTo(s.x, 0);
@@ -122,7 +129,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
     ctx.textBaseline = 'middle';
 
     // Horizontal Lines
-    for (let y = startY; y <= endYWorld; y += step) {
+    for (let y = Math.floor(startYWorld / renderStep) * renderStep; y <= endYWorld; y += renderStep) {
       const s = worldToScreen(0, y, viewport, width, height);
       ctx.beginPath();
       ctx.moveTo(0, s.y);
@@ -359,10 +366,68 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
     ctx.lineTo(origin.x, height);
     ctx.stroke();
 
+    // PERFORMANCE OPTIMIZATION: Culling
+    // Calculate world bounds of the viewport
+    const viewMin = screenToWorld(0, height, viewport, width, height); // Top-Left in screen is MinX, MaxY in world? Wait. screenToWorld(0, height) is Bottom-Left in screen logic (y=height).
+    // Let's use corners:
+    const p1 = screenToWorld(0, 0, viewport, width, height);
+    const p2 = screenToWorld(width, height, viewport, width, height);
+    
+    const viewMinX = Math.min(p1.x, p2.x);
+    const viewMaxX = Math.max(p1.x, p2.x);
+    const viewMinY = Math.min(p1.y, p2.y);
+    const viewMaxY = Math.max(p1.y, p2.y);
+
+    // Padding to avoid clipping thick lines or circles near edge
+    const padding = 50 / viewport.scale; // 50px buffer
+    const cullMinX = viewMinX - padding;
+    const cullMaxX = viewMaxX + padding;
+    const cullMinY = viewMinY - padding;
+    const cullMaxY = viewMaxY + padding;
+
+    const isVisible = (s: Shape): boolean => {
+        if (s.id === highlightedRef.current) return true; // Always draw highlight
+        
+        switch (s.type) {
+            case ShapeType.POINT:
+            case ShapeType.TEXT:
+                return s.x >= cullMinX && s.x <= cullMaxX && s.y >= cullMinY && s.y <= cullMaxY;
+            case ShapeType.CIRCLE:
+                // Bounding box check for circle
+                return (s.x + s.r) >= cullMinX && (s.x - s.r) <= cullMaxX &&
+                       (s.y + s.r) >= cullMinY && (s.y - s.r) <= cullMaxY;
+            case ShapeType.SEGMENT:
+                // Simple bounding box for segment
+                return Math.max(s.p1.x, s.p2.x) >= cullMinX && Math.min(s.p1.x, s.p2.x) <= cullMaxX &&
+                       Math.max(s.p1.y, s.p2.y) >= cullMinY && Math.min(s.p1.y, s.p2.y) <= cullMaxY;
+            case ShapeType.LINE:
+                // Lines are infinite, assume always visible unless we do complex math.
+                // But typically Lines span the whole view. 
+                // Optimization: if both points are far on one side of viewport, maybe skip?
+                // Infinite lines are tricky. Always draw them to be safe.
+                return true;
+            case ShapeType.POLYGON:
+                // Check if any point is in bounds OR if polygon encompasses view.
+                // Simple AABB check for polygon.
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                for(const p of s.points) {
+                    if (p.x < minX) minX = p.x;
+                    if (p.x > maxX) maxX = p.x;
+                    if (p.y < minY) minY = p.y;
+                    if (p.y > maxY) maxY = p.y;
+                }
+                return maxX >= cullMinX && minX <= cullMaxX && maxY >= cullMinY && minY <= cullMaxY;
+        }
+        return true;
+    };
+
     // Standard Draw Loop
     shapesRef.current.forEach(shape => {
         // Skip highlighted shape, draw it last
         if (shape.id === highlightedRef.current) return;
+        // Culling
+        if (!isVisible(shape)) return;
+        
         drawShape(ctx, shape, viewport, width, height, false);
     });
 
@@ -438,7 +503,10 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
     let hoveredShape: Shape | null = null;
     const threshold = 10; // hit radius in pixels
     
-    // Check shapes in reverse order (top to bottom)
+    // Optimization: Only check shapes roughly in view?
+    // Using spatial index would be best, but simple loop is O(N).
+    // Reverse iteration is good for z-order.
+    
     for (let i = shapesRef.current.length - 1; i >= 0; i--) {
         const s = shapesRef.current[i];
         if (s.type === ShapeType.POINT) {

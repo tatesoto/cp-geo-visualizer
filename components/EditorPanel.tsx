@@ -1,8 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { ChevronDownIcon, ChevronRightIcon, QuestionMarkCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronRightIcon, QuestionMarkCircleIcon, ArrowPathIcon, ChevronLeftIcon } from '@heroicons/react/24/outline';
 import { SNIPPETS, SnippetKey } from '../constants/snippets';
 
 interface EditorPanelProps {
+  isOpen: boolean;
+  onToggle: () => void;
   formatText: string;
   setFormatText: (text: string) => void;
   inputText: string;
@@ -12,6 +14,8 @@ interface EditorPanelProps {
 }
 
 const EditorPanel: React.FC<EditorPanelProps> = ({
+  isOpen,
+  onToggle,
   formatText,
   setFormatText,
   inputText,
@@ -28,22 +32,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
     if (snippet) {
         setFormatText(snippet.format);
         setInputText(snippet.input);
-        // We trigger parse in parent if needed, or user clicks button. 
-        // For smoother UX, we might want to trigger parse via a separate effect in parent, 
-        // but explicit action is fine here too.
-        // Actually, to match previous behavior of auto-parse on load, we can call onParse *after* state update 
-        // but React state updates are async. 
-        // The parent App handles the auto-parse effect if we change the state.
-        // However, in the refactored version, let's let the user click "Visualize" or rely on the parent's Effect if any.
-        // (App.tsx currently doesn't auto-parse on text change, only on mount. 
-        //  The previous `loadSnippet` did manual parse. We'll leave it manual/button-driven or add a callback if needed.
-        //  BUT, `App.tsx` has `useEffect` for `handleParse`, let's check. 
-        //  Actually, the previous App had `handleParse` call inside `loadSnippet`. 
-        //  We will expose a prop or let the user click visualize.)
-        
-        // *Self-correction*: To maintain exact behavior, we might need to expose a "load and parse" method, 
-        // but for now, updating the text state is enough, and the user can click Visualize.
-        // Better UX: User clicks dropdown -> Text updates -> They click visualize.
     }
   };
 
@@ -168,6 +156,26 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
     }
   };
 
+  if (!isOpen) {
+      return (
+          <div className="w-10 flex flex-col items-center py-2 border-r border-slate-800 bg-slate-900 shrink-0 transition-all">
+              <button 
+                  onClick={onToggle}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded mb-2 transition-colors"
+                  title="Expand Editor"
+              >
+                  <ChevronRightIcon className="w-5 h-5" />
+              </button>
+              <div 
+                  className="mt-4 text-slate-500 text-xs tracking-widest font-bold select-none whitespace-nowrap"
+                  style={{ writingMode: 'vertical-lr' }}
+              >
+                  EDITOR
+              </div>
+          </div>
+      );
+  }
+
   return (
     <div className="w-1/3 min-w-[350px] max-w-[600px] flex flex-col border-r border-slate-800 bg-slate-900/50">
       
@@ -185,8 +193,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                         className="bg-slate-800 text-xs text-slate-300 border border-slate-700 rounded px-2 py-0.5 focus:outline-none focus:border-blue-500 cursor-pointer"
                         onChange={(e) => {
                             loadSnippet(e.target.value);
-                            // Small trick: we can auto-trigger parse in parent if needed, 
-                            // but simpler to let user press visualize for now to decouple.
                         }}
                         defaultValue=""
                     >
@@ -197,22 +203,37 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                     </select>
                 </div>
             </div>
-            <div className="group relative" onClick={(e) => e.stopPropagation()}>
-                <QuestionMarkCircleIcon className="w-4 h-4 text-slate-500 hover:text-slate-300 cursor-pointer"/>
-                <div className="hidden group-hover:block absolute right-0 top-6 w-80 p-3 bg-slate-800 border border-slate-700 rounded shadow-xl text-xs text-slate-300 z-50">
-                    <p className="mb-2 font-bold text-slate-100">Syntax Guide</p>
-                    <ul className="list-disc pl-3 space-y-1">
-                        <li><code>Read var1 var2</code>: Read input numbers</li>
-                        <li><code>rep n:</code>: Repeat block n times</li>
-                        <li><code>Point x y [color] ["label"]</code></li>
-                        <li><code>Line x1 y1 x2 y2</code>: Infinite line</li>
-                        <li><code>Seg x1 y1 x2 y2</code>: Line segment</li>
-                        <li><code>Circle x y r</code>: Circle</li>
-                        <li><code>Push x y</code>: Buffer for polygon</li>
-                        <li><code>Poly</code>: Draw polygon from buffer</li>
-                        <li><code>Text x y [size] "content"</code></li>
-                        <li><code>// ...</code>: Comment</li>
-                    </ul>
+            
+            <div className="flex items-center gap-3">
+                <div className="group relative" onClick={(e) => e.stopPropagation()}>
+                    <QuestionMarkCircleIcon className="w-4 h-4 text-slate-500 hover:text-slate-300 cursor-pointer"/>
+                    <div className="hidden group-hover:block absolute right-0 top-6 w-80 p-3 bg-slate-800 border border-slate-700 rounded shadow-xl text-xs text-slate-300 z-50">
+                        <p className="mb-2 font-bold text-slate-100">Syntax Guide</p>
+                        <ul className="list-disc pl-3 space-y-1">
+                            <li><code>Read var1 var2</code>: Read input numbers</li>
+                            <li><code>rep n:</code>: Repeat block n times</li>
+                            <li><code>Point x y [color] ["label"]</code></li>
+                            <li><code>Line x1 y1 x2 y2</code>: Infinite line</li>
+                            <li><code>Seg x1 y1 x2 y2</code>: Line segment</li>
+                            <li><code>Circle x y r</code>: Circle</li>
+                            <li><code>Push x y</code>: Buffer for polygon</li>
+                            <li><code>Poly</code>: Draw polygon from buffer</li>
+                            <li><code>Text x y [size] "content"</code></li>
+                            <li><code>// ...</code>: Comment</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div 
+                    className="pl-3 border-l border-slate-700" 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggle();
+                    }}
+                >
+                     <button className="text-slate-500 hover:text-white" title="Collapse Panel">
+                        <ChevronLeftIcon className="w-4 h-4" />
+                     </button>
                 </div>
             </div>
         </div>

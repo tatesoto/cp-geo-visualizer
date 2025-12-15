@@ -18,6 +18,7 @@ function App() {
   
   // UI State
   const [isObjectListOpen, setIsObjectListOpen] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(true);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [visibleIdTypes, setVisibleIdTypes] = useState<ShapeType[]>([]);
 
@@ -63,11 +64,11 @@ function App() {
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel: Editor */}
         <EditorPanel 
+            isOpen={isEditorOpen}
+            onToggle={() => setIsEditorOpen(!isEditorOpen)}
             formatText={formatText}
             setFormatText={(text) => {
                 setFormatText(text);
-                // Optional: trigger immediate re-parse if desired, 
-                // but usually user waits to click visualize for large inputs.
             }}
             inputText={inputText}
             setInputText={(text) => {

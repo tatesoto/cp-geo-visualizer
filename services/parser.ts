@@ -19,32 +19,29 @@ const KEYWORDS = new Set([
   'circle', 'c',
   'poly', 'polygon',
   'push',
-  'text', // Removed 't' to allow it as variable
-  'read', // Removed 'r' to allow it as variable
+  'text',
+  'read',
   'rep'
 ]);
 
+// Improved Regex: matches non-whitespace/quotes OR quoted strings
+// Using 'g' flag for stateful exec
+const TOKEN_REGEX = /[^\s"']+|"([^"]*)"|'([^']*)'/g;
+
 class ParserContext {
-  tokens: string[];
-  tokenIndex: number;
+  input: string;
+  regex: RegExp;
   variables: Map<string, number>;
   shapes: Shape[];
   pointBuffer: {x: number, y: number}[];
   counts: Record<ShapeType, number>;
+  
+  // Lookahead buffer
+  currentToken: string | null = null;
 
   constructor(input: string) {
-    // Tokenize input by splitting whitespace
-    // We want to preserve quoted strings for Text command
-    const regex = /[^\s"']+|"([^"]*)"|'([^']*)'/g;
-    this.tokens = [];
-    let match;
-    while ((match = regex.exec(input.trim())) !== null) {
-      if (match[1] !== undefined) this.tokens.push(`"${match[1]}"`);
-      else if (match[2] !== undefined) this.tokens.push(`"${match[2]}"`);
-      else this.tokens.push(match[0]);
-    }
-
-    this.tokenIndex = 0;
+    this.input = input;
+    this.regex = new RegExp(TOKEN_REGEX); // New instance to manage lastIndex
     this.variables = new Map();
     this.shapes = [];
     this.pointBuffer = [];
@@ -58,16 +55,34 @@ class ParserContext {
     };
   }
 
-  hasNext() {
-    return this.tokenIndex < this.tokens.length;
+  // Fetch next token without advancing if already buffered
+  peek(): string | null {
+    if (this.currentToken !== null) return this.currentToken;
+    
+    const match = this.regex.exec(this.input);
+    if (match === null) return null;
+
+    // Extract the actual value (handling quotes)
+    if (match[1] !== undefined) this.currentToken = `"${match[1]}"`;
+    else if (match[2] !== undefined) this.currentToken = `"${match[2]}"`;
+    else this.currentToken = match[0];
+
+    return this.currentToken;
   }
 
-  consume() {
-    if (!this.hasNext()) throw new Error("Unexpected end of input");
-    return this.tokens[this.tokenIndex++];
+  // Return current token and advance
+  consume(): string {
+    const token = this.peek();
+    if (token === null) throw new Error("Unexpected end of input");
+    this.currentToken = null; // Clear buffer to allow next read
+    return token;
   }
 
-  consumeNumber() {
+  hasNext(): boolean {
+    return this.peek() !== null;
+  }
+
+  consumeNumber(): number {
     const token = this.consume();
     const val = parseFloat(token);
     if (isNaN(val)) throw new Error(`Expected number, found '${token}'`);
@@ -104,8 +119,13 @@ class ParserContext {
 }
 
 export const parseInput = (format: string, input: string): ParseResult => {
-  const ctx = new ParserContext(input);
+  // Pre-process format lines to handle indentation logic structure
+  // We still split format string as it is small.
   const rawFormatLines = format.split('\n');
+  
+  // Combine format lines into a linear command structure to avoid recursion depth issues?
+  // For now, keep recursion but optimize the input data reading.
+  const ctx = new ParserContext(input);
   
   try {
     processBlock(rawFormatLines, 0, ctx);
@@ -126,7 +146,6 @@ function validateVariableName(name: string) {
     if (KEYWORDS.has(name.toLowerCase())) {
         throw new Error(`Syntax Error: '${name}' is a reserved keyword and cannot be used as a variable name.`);
     }
-    // Simple validation: must start with letter/underscore and contain only alphanumeric/underscore
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
         throw new Error(`Syntax Error: '${name}' is not a valid variable name. Must start with a letter or underscore.`);
     }
@@ -186,12 +205,56 @@ function processBlock(lines: string[], baseIndent: number, ctx: ParserContext) {
           throw new Error(`Indentation Error: Expected an indented block after "${trimmed}"`);
       }
 
+      // Optimization: If loop contains NO 'read' commands, we can compute the commands once?
+      // No, because variables might change or 'push' commands have side effects.
+      // However, we must ensure variables are scoped correctly or reused.
+      // The original logic copies variable map keys to scope them.
+      
+      // Optimization for large loops: Avoid creating new Set/Array every iteration if possible.
+      // But for correctness of "rep" scoping (resetting local vars), we need it.
+      // Let's keep the logic but optimize allocations slightly.
+      
+      const initialVars = Array.from(ctx.variables.keys());
+      
       for (let k = 0; k < count; k++) {
-        const varsBefore = new Set(ctx.variables.keys());
         processBlock(loopBlockLines, blockIndent, ctx);
+        
+        // Restore scope: delete variables added during iteration
+        // This is faster than Set logic if we assume append-only for local vars
+        const currentVars = ctx.variables.keys();
+        // Since Map iterates in insertion order, new vars are at the end.
+        // But iterating whole map is slow.
+        // Let's rely on the fact that we can just check existence against initial set.
+        // Or simpler: We actually need to maintain the values of outer variables, but drop inner ones.
+        // The previous implementation was:
+        /*
+        const varsBefore = new Set(ctx.variables.keys());
+        processBlock(...)
         const currentVars = Array.from(ctx.variables.keys());
-        for (const key of currentVars) {
-            if (!varsBefore.has(key)) ctx.variables.delete(key);
+        for (const key of currentVars) { if (!varsBefore.has(key)) ctx.variables.delete(key); }
+        */
+        // This is O(V) per iteration. Can be slow.
+        // Optimization: "Read" is usually at the top level of the loop.
+        // Let's stick to correctness for now, parsing structure usually isn't the bottleneck compared to tokenization.
+        
+        // We will do the Set cleanup as it is robust.
+        // To avoid creating a Set every time, maybe we can just track added keys?
+        // processBlock is recursive, tracking is hard.
+        // Reverting to robust scoping, but optimized set creation.
+        
+        if (ctx.variables.size > initialVars.length) {
+             // Only prune if size grew
+             // We can iterate backwards? No.
+             // Just recreate the valid keys set?
+             // Actually, Map.keys() iterator is efficient.
+             // Optimization: pass a callback or context to track added vars?
+             // Let's keep it simple for now as 'token regex' was the main memory issue.
+             
+             // Fast pruning:
+             const currentKeys = Array.from(ctx.variables.keys());
+             for (let vIndex = initialVars.length; vIndex < currentKeys.length; vIndex++) {
+                 ctx.variables.delete(currentKeys[vIndex]);
+             }
         }
       }
       i = j;
@@ -203,6 +266,8 @@ function processBlock(lines: string[], baseIndent: number, ctx: ParserContext) {
 }
 
 function parseCommand(line: string, ctx: ParserContext) {
+  // We need to parse the *format line* to know what to read from *input stream*
+  // The format line itself is short, we can use simple split/regex.
   const argsRegex = /[^\s"']+|"([^"]*)"|'([^']*)'/g;
   const parts: string[] = [];
   let match;
@@ -216,7 +281,7 @@ function parseCommand(line: string, ctx: ParserContext) {
 
   const firstToken = parts[0].toLowerCase();
 
-  // Handle 'read' command
+  // Handle 'read' command - this consumes from input stream
   if (firstToken === 'read') {
       for (let k = 1; k < parts.length; k++) {
           const varName = parts[k];
@@ -228,6 +293,7 @@ function parseCommand(line: string, ctx: ParserContext) {
       return;
   }
 
+  // Other commands use variables or literals from the format string itself
   let args: (string | number)[];
   let command: string | null = null;
 
@@ -235,7 +301,6 @@ function parseCommand(line: string, ctx: ParserContext) {
       command = firstToken;
       args = parts.slice(1).map(p => processArg(p, ctx));
   } else {
-      // Unknown command error
       throw new Error(`Syntax Error: Unknown command '${parts[0]}'`);
   }
 
@@ -261,19 +326,28 @@ function processArg(p: string, ctx: ParserContext): string | number {
 }
 
 function executeShapeCommand(command: string, args: (string|number)[], ctx: ParserContext) {
-  const getColor = () => {
-      const colorArg = args.find(a => typeof a === 'string' && a.startsWith('#'));
-      return (colorArg as string) || COLORS[ctx.shapes.length % COLORS.length];
-  }
+  // Optimization: Don't use array methods (find/filter) if we can iterate once
+  // But args is usually very small (3-5 items).
+  
+  // Use indexed access for speed on known patterns?
+  // Current logic is generic. Let's keep it but ensure we don't leak memory.
+  
+  let color: string | undefined;
+  let label: string | undefined;
+  const nums: number[] = [];
 
-  const getLabel = () => {
-     const labelArg = args.find(a => typeof a === 'string' && !a.startsWith('#'));
-     return (labelArg as string) || undefined;
+  for (const a of args) {
+      if (typeof a === 'number') {
+          nums.push(a);
+      } else if (typeof a === 'string') {
+          if (a.startsWith('#')) color = a;
+          else label = a;
+      }
   }
-
-  const nums = args.filter(a => typeof a === 'number') as number[];
-  const color = getColor();
-  const label = getLabel();
+  
+  if (!color) {
+      color = COLORS[ctx.shapes.length % COLORS.length];
+  }
 
   if (command === 'point' || command === 'p') {
     if (nums.length >= 2) {
@@ -303,8 +377,10 @@ function executeShapeCommand(command: string, args: (string|number)[], ctx: Pars
     if (nums.length === 0) {
        if (ctx.pointBuffer.length > 0) {
            const id = ctx.generateId(ShapeType.POLYGON);
-           ctx.shapes.push({ id, type: ShapeType.POLYGON, points: [...ctx.pointBuffer], color, label });
-           ctx.pointBuffer = [];
+           // Optimization: ctx.pointBuffer is a reference, if we use slice() it copies.
+           // We need to copy because pointBuffer is cleared.
+           ctx.shapes.push({ id, type: ShapeType.POLYGON, points: ctx.pointBuffer.slice(), color, label });
+           ctx.pointBuffer.length = 0; // Clear without reallocating
        }
     } else if (nums.length >= 6 && nums.length % 2 === 0) {
       const points = [];
