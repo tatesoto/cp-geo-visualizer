@@ -14,11 +14,11 @@ const COLORS = [
 ];
 
 export const KEYWORDS = new Set([
-  'point', 'p',
-  'line', 'l',
-  'segment', 's', 'seg',
-  'circle', 'c',
-  'poly', 'polygon',
+  'point',
+  'line',
+  'seg', 
+  'circle',
+  'poly',
   'push',
   'text',
   'read',
@@ -515,7 +515,7 @@ function executeShapeCommand(command: string, args: (string|number)[], ctx: Pars
   
   const groupId = ctx.currentGroupId;
 
-  if (command === 'point' || command === 'p') {
+  if (command === 'point') {
     if (nums.length >= 2) {
       const id = ctx.generateId(ShapeType.POINT);
       ctx.shapes.push({ id, type: ShapeType.POINT, x: nums[0], y: nums[1], color, label, groupId });
@@ -524,22 +524,22 @@ function executeShapeCommand(command: string, args: (string|number)[], ctx: Pars
     if (nums.length >= 2) {
       ctx.pointBuffer.push({ x: nums[0], y: nums[1] });
     }
-  } else if (command === 'line' || command === 'l') {
+  } else if (command === 'line') {
     if (nums.length >= 4) {
       const id = ctx.generateId(ShapeType.LINE);
       ctx.shapes.push({ id, type: ShapeType.LINE, p1: { x: nums[0], y: nums[1] }, p2: { x: nums[2], y: nums[3] }, color, label, groupId });
     }
-  } else if (command === 'segment' || command === 's' || command === 'seg') {
+  } else if (command === 'seg') {
     if (nums.length >= 4) {
       const id = ctx.generateId(ShapeType.SEGMENT);
       ctx.shapes.push({ id, type: ShapeType.SEGMENT, p1: { x: nums[0], y: nums[1] }, p2: { x: nums[2], y: nums[3] }, color, label, groupId });
     }
-  } else if (command === 'circle' || command === 'c') {
+  } else if (command === 'circle') {
     if (nums.length >= 3) {
       const id = ctx.generateId(ShapeType.CIRCLE);
       ctx.shapes.push({ id, type: ShapeType.CIRCLE, x: nums[0], y: nums[1], r: nums[2], color, label, groupId });
     }
-  } else if (command === 'poly' || command === 'polygon') {
+  } else if (command === 'poly') {
     if (nums.length === 0) {
        if (ctx.pointBuffer.length > 0) {
            const id = ctx.generateId(ShapeType.POLYGON);

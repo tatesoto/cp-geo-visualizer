@@ -22,15 +22,19 @@ interface EditorPanelProps {
 const MIN_WIDTH = 250;
 const MAX_WIDTH = 800;
 
-// Proper case keywords for display
-const SUGGESTION_LIST = Array.from(KEYWORDS).filter(k => k.length > 1).map(k => {
-    // Capitalize first letter for better DX if it's not a short alias
-    // 'rep' is kept lowercase by standard convention
-    if (['point', 'line', 'segment', 'circle', 'poly', 'polygon', 'push', 'text', 'read'].includes(k)) {
-        return k.charAt(0).toUpperCase() + k.slice(1);
-    }
-    return k;
-}).sort();
+// Curated suggestion list with proper casing
+const SUGGESTION_LIST = [
+  'Point',
+  'Line',
+  'Seg',
+  'Circle',
+  'Poly',
+  'Push',
+  'Text',
+  'Read',
+  'rep',
+  'Group'
+].sort();
 
 const EditorPanel: React.FC<EditorPanelProps> = ({
   isOpen,
