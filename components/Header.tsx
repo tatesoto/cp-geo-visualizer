@@ -1,12 +1,13 @@
 import React from 'react';
-import { ListBulletIcon } from '@heroicons/react/24/outline';
+import { ListBulletIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 
 interface HeaderProps {
   isObjectListOpen: boolean;
   setIsObjectListOpen: (isOpen: boolean) => void;
+  onOpenSettings: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ isObjectListOpen, setIsObjectListOpen }) => {
+const Header: React.FC<HeaderProps> = ({ isObjectListOpen, setIsObjectListOpen, onOpenSettings }) => {
   return (
     <header className="h-12 border-b border-gray-100 flex items-center justify-between px-4 bg-white/80 backdrop-blur-sm z-20 sticky top-0">
       <div className="flex items-center gap-3">
@@ -20,6 +21,14 @@ const Header: React.FC<HeaderProps> = ({ isObjectListOpen, setIsObjectListOpen }
       </div>
       
       <div className="flex items-center gap-2">
+          <button
+            onClick={onOpenSettings}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 shadow-sm transition-all"
+            title="Settings"
+          >
+            <Cog6ToothIcon className="w-4 h-4" />
+          </button>
+          <div className="w-px h-4 bg-gray-200 mx-1"></div>
           <button
              onClick={() => setIsObjectListOpen(!isObjectListOpen)}
              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${

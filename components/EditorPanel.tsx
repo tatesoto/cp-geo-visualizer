@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { ChevronDownIcon, ChevronRightIcon, QuestionMarkCircleIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, CommandLineIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronRightIcon, QuestionMarkCircleIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, CommandLineIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 import { SNIPPETS, SnippetKey } from '../constants/snippets';
 
 interface EditorPanelProps {
@@ -11,6 +11,7 @@ interface EditorPanelProps {
   setInputText: (text: string) => void;
   onParse: () => void;
   error: string | null;
+  isParsing?: boolean;
 }
 
 const MIN_WIDTH = 250;
@@ -24,7 +25,8 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   inputText,
   setInputText,
   onParse,
-  error
+  error,
+  isParsing = false
 }) => {
   const [isFormatOpen, setIsFormatOpen] = useState(true);
   const [isInputOpen, setIsInputOpen] = useState(true);
@@ -84,6 +86,8 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
       }
     };
     reader.readAsText(file);
+    // Reset value so the same file can be selected again
+    e.target.value = '';
   };
 
   const handleFormatKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -114,7 +118,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                     formatInputRef.current.selectionStart = firstLineStart;
                     formatInputRef.current.selectionEnd = firstLineStart + newContent.length;
                 } else {
-                    // Simple cursor restore logic
                     formatInputRef.current.selectionStart = selectionStart; 
                     formatInputRef.current.selectionEnd = selectionStart;
                 }
@@ -167,16 +170,19 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
 
   if (!isOpen) {
       return (
-          <div className="w-12 flex flex-col items-center py-4 border-r border-gray-200 bg-white shrink-0">
+          <div className="w-12 flex flex-col items-center py-4 border-r border-gray-200 bg-white shrink-0 group transition-all hover:bg-gray-50 cursor-pointer z-30" onClick={onToggle}>
               <button 
-                  onClick={onToggle}
-                  className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 text-gray-400 group-hover:text-gray-900 rounded-lg transition-colors mb-4"
+                  title="Expand Editor"
               >
-                  <ChevronRightIcon className="w-5 h-5" />
+                  <ArrowsPointingOutIcon className="w-5 h-5" />
               </button>
-              <div className="mt-8 flex flex-col gap-6">
-                <span className="text-gray-400" title="Format"><CommandLineIcon className="w-5 h-5"/></span>
-                <span className="text-gray-400" title="Input"><DocumentTextIcon className="w-5 h-5"/></span>
+              
+              <div 
+                  className="mt-2 text-gray-400 group-hover:text-gray-600 text-[10px] tracking-[0.2em] font-bold select-none whitespace-nowrap uppercase"
+                  style={{ writingMode: 'vertical-lr', textOrientation: 'mixed' }}
+              >
+                  Editor Panel
               </div>
           </div>
       );
@@ -184,59 +190,65 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
 
   return (
     <div 
-        className="flex flex-col border-r border-gray-200 bg-gray-50/30 font-sans relative shrink-0"
+        className="flex flex-col border-r border-gray-200 bg-gray-50/30 font-sans relative shrink-0 h-full max-h-full z-30"
         style={{ width: width }}
     >
+      {/* Panel Header with Collapse Button */}
+      <div className="h-10 bg-white border-b border-gray-100 flex items-center justify-between px-4 shrink-0">
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Configuration</span>
+          <button 
+             onClick={onToggle}
+             className="text-gray-400 hover:text-gray-900 hover:bg-gray-100 p-1.5 rounded-md transition-colors"
+             title="Collapse Panel"
+          >
+             <ChevronLeftIcon className="w-4 h-4" />
+          </button>
+      </div>
       
-      {/* Format Editor Section */}
-      <div className={`flex flex-col border-b border-gray-200 transition-[flex-grow] duration-300 ease-in-out ${isFormatOpen ? 'flex-1 min-h-[200px]' : 'flex-none'}`}>
-        <div 
-            className="h-10 bg-white border-b border-gray-100 flex items-center px-4 justify-between select-none group"
-        >
+      {/* Scrollable Container for Editors */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden">
+        
+        {/* Format Editor Section */}
+        <div className={`flex flex-col border-b border-gray-200 transition-all duration-300 ease-in-out ${isFormatOpen ? 'flex-[1.2] min-h-[100px]' : 'flex-none h-9 overflow-hidden'}`}>
             <div 
-                className="flex items-center gap-2 cursor-pointer text-gray-600 hover:text-black transition-colors"
-                onClick={() => setIsFormatOpen(!isFormatOpen)}
+                className="h-9 bg-white border-b border-gray-100 flex items-center px-4 justify-between select-none group shrink-0 sticky top-0 z-10"
             >
-                {isFormatOpen ? <ChevronDownIcon className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />}
-                <span className="text-xs font-semibold uppercase tracking-wide">Format Script</span>
-            </div>
-            
-            <div className="flex items-center gap-3">
-                 <select 
-                    className="bg-transparent text-xs text-gray-500 hover:text-gray-900 border-none outline-none cursor-pointer pr-1 transition-colors text-right appearance-none"
-                    onChange={(e) => loadSnippet(e.target.value)}
-                    value=""
+                <div 
+                    className="flex items-center gap-2 cursor-pointer text-gray-600 hover:text-black transition-colors"
+                    onClick={() => setIsFormatOpen(!isFormatOpen)}
                 >
-                    <option value="" disabled>Load Snippet...</option>
-                    {Object.entries(SNIPPETS).map(([key, snip]) => (
-                        <option key={key} value={key}>{snip.label}</option>
-                    ))}
-                </select>
+                    {isFormatOpen ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
+                    <span className="text-xs font-semibold uppercase tracking-wide">Format Script</span>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                    <select 
+                        className="bg-transparent text-xs text-gray-500 hover:text-gray-900 border-none outline-none cursor-pointer pr-1 transition-colors text-right appearance-none"
+                        onChange={(e) => loadSnippet(e.target.value)}
+                        value=""
+                    >
+                        <option value="" disabled>Load Snippet...</option>
+                        {Object.entries(SNIPPETS).map(([key, snip]) => (
+                            <option key={key} value={key}>{snip.label}</option>
+                        ))}
+                    </select>
 
-                <div className="group/help relative">
-                    <QuestionMarkCircleIcon className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-pointer"/>
-                    {/* Tooltip */}
-                    <div className="hidden group-hover/help:block absolute right-0 top-6 w-72 p-4 bg-white border border-gray-200 rounded-lg shadow-xl text-xs text-gray-600 z-50">
-                        <p className="mb-2 font-semibold text-gray-900">Syntax Reference</p>
-                        <div className="space-y-1.5 font-mono text-[11px] leading-relaxed">
-                            <div className="flex gap-2"><span className="text-purple-600">Read</span> <span className="text-gray-500">vars...</span></div>
-                            <div className="flex gap-2"><span className="text-purple-600">rep</span> <span className="text-blue-600">n</span>:</div>
-                            <div className="pl-4 text-gray-400">// indented block</div>
-                            <div className="flex gap-2"><span className="text-purple-600">Point</span> x y <span className="text-gray-400">[color]</span></div>
-                            <div className="flex gap-2"><span className="text-purple-600">Line</span> x1 y1 x2 y2</div>
-                            <div className="flex gap-2"><span className="text-purple-600">Circle</span> x y r</div>
+                    <div className="group/help relative">
+                        <QuestionMarkCircleIcon className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 cursor-pointer"/>
+                        <div className="hidden group-hover/help:block absolute right-0 top-6 w-72 p-4 bg-white border border-gray-200 rounded-lg shadow-xl text-xs text-gray-600 z-50">
+                            <p className="mb-2 font-semibold text-gray-900">Syntax Reference</p>
+                            <div className="space-y-1.5 font-mono text-[11px] leading-relaxed">
+                                <div className="flex gap-2"><span className="text-purple-600">Read</span> <span className="text-gray-500">vars...</span></div>
+                                <div className="flex gap-2"><span className="text-purple-600">rep</span> <span className="text-blue-600">n</span>:</div>
+                                <div className="pl-4 text-gray-400">// indented block</div>
+                                <div className="flex gap-2"><span className="text-purple-600">Point</span> x y <span className="text-gray-400">[color]</span></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                <button onClick={onToggle} className="text-gray-400 hover:text-black ml-2" title="Collapse">
-                    <ChevronLeftIcon className="w-4 h-4" />
-                </button>
             </div>
-        </div>
-        
-        {isFormatOpen && (
-            <div className="flex-1 relative group">
+            
+            <div className="flex-1 relative group bg-white">
                 <textarea
                     ref={formatInputRef}
                     value={formatText}
@@ -248,32 +260,30 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                     style={{ tabSize: 4 }}
                 />
             </div>
-        )}
-      </div>
-
-      {/* Input Data Section */}
-      <div className={`flex flex-col transition-[flex-grow] duration-300 ease-in-out ${isInputOpen ? 'flex-1 min-h-[150px]' : 'flex-none'}`}>
-         <div 
-            className="h-10 bg-white border-b border-gray-100 flex items-center px-4 justify-between select-none border-t border-gray-200"
-         >
-            <div 
-                className="flex items-center gap-2 cursor-pointer text-gray-600 hover:text-black transition-colors"
-                onClick={() => setIsInputOpen(!isInputOpen)}
-            >
-                {isInputOpen ? <ChevronDownIcon className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />}
-                <span className="text-xs font-semibold uppercase tracking-wide">Input Data</span>
-            </div>
-            <label 
-                className="text-xs text-gray-500 hover:text-gray-900 cursor-pointer flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-gray-100"
-            >
-                <DocumentTextIcon className="w-3.5 h-3.5" />
-                <span>Upload</span>
-                <input type="file" className="hidden" onChange={handleFileUpload} />
-            </label>
         </div>
-        
-        {isInputOpen && (
-            <div className="flex-1 relative">
+
+        {/* Input Data Section */}
+        <div className={`flex flex-col transition-all duration-300 ease-in-out ${isInputOpen ? 'flex-1 min-h-[100px]' : 'flex-none h-9 overflow-hidden'}`}>
+            <div 
+                className="h-9 bg-white border-b border-gray-100 flex items-center px-4 justify-between select-none border-t border-gray-200 shrink-0 sticky top-0 z-10"
+            >
+                <div 
+                    className="flex items-center gap-2 cursor-pointer text-gray-600 hover:text-black transition-colors"
+                    onClick={() => setIsInputOpen(!isInputOpen)}
+                >
+                    {isInputOpen ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
+                    <span className="text-xs font-semibold uppercase tracking-wide">Input Data</span>
+                </div>
+                <label 
+                    className="text-xs text-gray-500 hover:text-gray-900 cursor-pointer flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-gray-100"
+                >
+                    <DocumentTextIcon className="w-3.5 h-3.5" />
+                    <span>Upload</span>
+                    <input type="file" className="hidden" onChange={handleFileUpload} />
+                </label>
+            </div>
+            
+            <div className="flex-1 relative bg-white">
                 <textarea
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
@@ -283,13 +293,14 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                     style={{ tabSize: 4 }}
                 />
             </div>
-        )}
+        </div>
+
       </div>
 
       {/* Action Area */}
-      <div className="p-4 bg-white border-t border-gray-200 shrink-0">
+      <div className="p-4 bg-white border-t border-gray-200 shrink-0 z-10">
         {error ? (
-            <div className="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded text-red-600 text-xs font-mono break-all whitespace-pre-wrap flex gap-2 items-start">
+            <div className="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded text-red-600 text-xs font-mono break-all whitespace-pre-wrap flex gap-2 items-start max-h-24 overflow-y-auto">
                  <span className="font-bold select-none">Error:</span> {error}
             </div>
         ) : (
@@ -297,11 +308,29 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
         )}
         
         <button
-          onClick={onParse}
-          className="w-full group relative flex justify-center items-center gap-2 bg-black hover:bg-gray-800 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-all shadow-sm active:scale-[0.98]"
+          onClick={isParsing ? undefined : onParse}
+          disabled={isParsing}
+          className={`
+            w-full group relative flex justify-center items-center gap-2 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-all shadow-sm
+            ${isParsing 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-black hover:bg-gray-800 active:scale-[0.98]'}
+          `}
         >
-          <PlayIcon className="w-4 h-4 text-gray-300 group-hover:text-white transition-colors" />
-          Visualize
+          {isParsing ? (
+             <div className="flex items-center gap-2">
+                 <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                 </svg>
+                 <span>Processing...</span>
+             </div>
+          ) : (
+              <>
+                <PlayIcon className="w-4 h-4 text-gray-300 group-hover:text-white transition-colors" />
+                Visualize
+              </>
+          )}
         </button>
       </div>
 

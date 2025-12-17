@@ -4,8 +4,9 @@ import ObjectList from './components/ObjectList';
 import Header from './components/Header';
 import EditorPanel from './components/EditorPanel';
 import VisualizerControls from './components/VisualizerControls';
+import SettingsModal from './components/SettingsModal';
 import { parseInput } from './services/parser';
-import { Shape, ShapeType } from './types';
+import { Shape, ShapeType, AppConfig } from './types';
 import { SNIPPETS } from './constants/snippets';
 
 const INITIAL_KEY = 'points';
@@ -16,24 +17,39 @@ function App() {
   const [parsedShapes, setParsedShapes] = useState<Shape[]>([]);
   const [error, setError] = useState<string | null>(null);
   
+  // Configuration State
+  const [config, setConfig] = useState<AppConfig>({
+      executionTimeout: 3000,
+      renderTimeout: 200,
+  });
+
   // UI State
   const [isObjectListOpen, setIsObjectListOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(true);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [visibleIdTypes, setVisibleIdTypes] = useState<ShapeType[]>([]);
+  const [isParsing, setIsParsing] = useState(false);
 
   const visualizerRef = useRef<VisualizerHandle>(null);
 
   const handleParse = () => {
-    const result = parseInput(formatText, inputText);
-    if (result.error) {
-      setError(result.error);
-    } else {
-      setError(null);
-      setParsedShapes(result.shapes);
-      // Reset selection when shapes change
-      setSelectedShapeId(null);
-    }
+    setIsParsing(true);
+    
+    // Increase timeout to 100ms to ensure the browser has enough time 
+    // to repaint the UI with the loading spinner before the main thread is blocked.
+    setTimeout(() => {
+        const result = parseInput(formatText, inputText, config.executionTimeout);
+        
+        if (result.error) {
+            setError(result.error);
+        } else {
+            setError(null);
+            setParsedShapes(result.shapes);
+            setSelectedShapeId(null);
+        }
+        setIsParsing(false);
+    }, 100);
   };
 
   // Initial parse on mount
@@ -41,6 +57,14 @@ function App() {
     handleParse();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-parse when timeout setting changes if there is an error (likely timeout error)
+  useEffect(() => {
+      if (error && error.includes('timed out')) {
+          handleParse();
+      }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.executionTimeout]);
 
   const toggleSelection = (id: string | null) => {
       setSelectedShapeId(prev => prev === id ? null : id);
@@ -58,7 +82,8 @@ function App() {
     <div className="flex flex-col h-screen bg-gray-50 text-gray-900 font-sans">
       <Header 
         isObjectListOpen={isObjectListOpen} 
-        setIsObjectListOpen={setIsObjectListOpen} 
+        setIsObjectListOpen={setIsObjectListOpen}
+        onOpenSettings={() => setIsSettingsOpen(true)} 
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -76,6 +101,7 @@ function App() {
             }}
             onParse={handleParse}
             error={error}
+            isParsing={isParsing}
         />
 
         {/* Right Panel: Visualization & Object List */}
@@ -86,6 +112,7 @@ function App() {
                     shapes={parsedShapes} 
                     highlightedShapeId={selectedShapeId}
                     visibleIdTypes={visibleIdTypes}
+                    renderTimeout={config.renderTimeout}
                 />
                 
                 <VisualizerControls 
@@ -106,6 +133,15 @@ function App() {
             )}
         </div>
       </div>
+
+      {/* Modals */}
+      {isSettingsOpen && (
+          <SettingsModal 
+            config={config} 
+            onSave={setConfig} 
+            onClose={() => setIsSettingsOpen(false)} 
+          />
+      )}
     </div>
   );
 }

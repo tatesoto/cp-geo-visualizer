@@ -10,9 +10,15 @@ interface VisualizerProps {
   shapes: Shape[];
   highlightedShapeId?: string | null;
   visibleIdTypes?: ShapeType[];
+  renderTimeout?: number;
 }
 
-const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, highlightedShapeId, visibleIdTypes = [] }, ref) => {
+const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ 
+    shapes, 
+    highlightedShapeId, 
+    visibleIdTypes = [], 
+    renderTimeout = 200 
+}, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<Viewport>({ centerX: 0, centerY: 0, scale: 50 });
@@ -20,6 +26,8 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
   const shapesRef = useRef<Shape[]>(shapes);
   const highlightedRef = useRef<string | null | undefined>(highlightedShapeId);
   const visibleIdTypesRef = useRef(visibleIdTypes);
+  const renderTimeoutRef = useRef(renderTimeout);
+
   const [hoverInfo, setHoverInfo] = useState<{x: number, y: number, text: string} | null>(null);
 
   const requestRender = () => {
@@ -67,8 +75,9 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
   useEffect(() => {
     highlightedRef.current = highlightedShapeId;
     visibleIdTypesRef.current = visibleIdTypes;
+    renderTimeoutRef.current = renderTimeout;
     requestRender();
-  }, [highlightedShapeId, visibleIdTypes]);
+  }, [highlightedShapeId, visibleIdTypes, renderTimeout]);
 
   const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number, viewport: Viewport) => {
     const { centerX, centerY, scale } = viewport;
@@ -400,11 +409,34 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ shapes, high
         return true;
     };
 
-    shapesRef.current.forEach(shape => {
-        if (shape.id === highlightedRef.current) return;
-        if (!isVisible(shape)) return;
+    const renderStart = performance.now();
+    let isTimedOut = false;
+
+    // Use for loop instead of forEach to allow break
+    for (let i = 0; i < shapesRef.current.length; i++) {
+        // Check timeout every 500 items to reduce overhead
+        if (i % 500 === 0 && performance.now() - renderStart > renderTimeoutRef.current) {
+             isTimedOut = true;
+             break;
+        }
+
+        const shape = shapesRef.current[i];
+        if (shape.id === highlightedRef.current) continue;
+        if (!isVisible(shape)) continue;
         drawShape(ctx, shape, viewport, width, height, false);
-    });
+    }
+
+    if (isTimedOut) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillRect(0, height - 30, 260, 30);
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 12px "Inter", sans-serif';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+        ctx.fillText('⚠ Rendering timed out. Showing partial results.', 10, height - 15);
+        ctx.restore();
+    }
 
     if (highlightedRef.current) {
         const shape = shapesRef.current.find(s => s.id === highlightedRef.current);

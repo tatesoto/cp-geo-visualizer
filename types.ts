@@ -64,3 +64,8 @@ export interface ParseResult {
   shapes: Shape[];
   error: string | null;
 }
+
+export interface AppConfig {
+  executionTimeout: number;
+  renderTimeout: number;
+}

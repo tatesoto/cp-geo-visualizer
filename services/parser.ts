@@ -35,16 +35,20 @@ class ParserContext {
   shapes: Shape[];
   pointBuffer: {x: number, y: number}[];
   counts: Record<ShapeType, number>;
+  startTime: number;
+  timeoutMs: number;
   
   // Lookahead buffer
   currentToken: string | null = null;
 
-  constructor(input: string) {
+  constructor(input: string, timeoutMs: number) {
     this.input = input;
     this.regex = new RegExp(TOKEN_REGEX); // New instance to manage lastIndex
     this.variables = new Map();
     this.shapes = [];
     this.pointBuffer = [];
+    this.startTime = Date.now();
+    this.timeoutMs = timeoutMs;
     this.counts = {
       [ShapeType.POINT]: 0,
       [ShapeType.LINE]: 0,
@@ -53,6 +57,12 @@ class ParserContext {
       [ShapeType.POLYGON]: 0,
       [ShapeType.TEXT]: 0,
     };
+  }
+
+  checkTimeout() {
+    if (Date.now() - this.startTime > this.timeoutMs) {
+        throw new Error(`Execution timed out (> ${this.timeoutMs}ms). Please optimize your script, reduce input size, or increase the timeout limit in Settings.`);
+    }
   }
 
   // Fetch next token without advancing if already buffered
@@ -118,14 +128,14 @@ class ParserContext {
   }
 }
 
-export const parseInput = (format: string, input: string): ParseResult => {
+export const parseInput = (format: string, input: string, timeoutMs: number = 3000): ParseResult => {
   // Pre-process format lines to handle indentation logic structure
   // We still split format string as it is small.
   const rawFormatLines = format.split('\n');
   
   // Combine format lines into a linear command structure to avoid recursion depth issues?
   // For now, keep recursion but optimize the input data reading.
-  const ctx = new ParserContext(input);
+  const ctx = new ParserContext(input, timeoutMs);
   
   try {
     processBlock(rawFormatLines, 0, ctx);
@@ -154,6 +164,8 @@ function validateVariableName(name: string) {
 function processBlock(lines: string[], baseIndent: number, ctx: ParserContext) {
   let i = 0;
   while (i < lines.length) {
+    ctx.checkTimeout();
+
     const line = lines[i];
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('//')) {
@@ -205,52 +217,14 @@ function processBlock(lines: string[], baseIndent: number, ctx: ParserContext) {
           throw new Error(`Indentation Error: Expected an indented block after "${trimmed}"`);
       }
 
-      // Optimization: If loop contains NO 'read' commands, we can compute the commands once?
-      // No, because variables might change or 'push' commands have side effects.
-      // However, we must ensure variables are scoped correctly or reused.
-      // The original logic copies variable map keys to scope them.
-      
-      // Optimization for large loops: Avoid creating new Set/Array every iteration if possible.
-      // But for correctness of "rep" scoping (resetting local vars), we need it.
-      // Let's keep the logic but optimize allocations slightly.
-      
       const initialVars = Array.from(ctx.variables.keys());
       
       for (let k = 0; k < count; k++) {
+        ctx.checkTimeout();
         processBlock(loopBlockLines, blockIndent, ctx);
         
         // Restore scope: delete variables added during iteration
-        // This is faster than Set logic if we assume append-only for local vars
-        const currentVars = ctx.variables.keys();
-        // Since Map iterates in insertion order, new vars are at the end.
-        // But iterating whole map is slow.
-        // Let's rely on the fact that we can just check existence against initial set.
-        // Or simpler: We actually need to maintain the values of outer variables, but drop inner ones.
-        // The previous implementation was:
-        /*
-        const varsBefore = new Set(ctx.variables.keys());
-        processBlock(...)
-        const currentVars = Array.from(ctx.variables.keys());
-        for (const key of currentVars) { if (!varsBefore.has(key)) ctx.variables.delete(key); }
-        */
-        // This is O(V) per iteration. Can be slow.
-        // Optimization: "Read" is usually at the top level of the loop.
-        // Let's stick to correctness for now, parsing structure usually isn't the bottleneck compared to tokenization.
-        
-        // We will do the Set cleanup as it is robust.
-        // To avoid creating a Set every time, maybe we can just track added keys?
-        // processBlock is recursive, tracking is hard.
-        // Reverting to robust scoping, but optimized set creation.
-        
         if (ctx.variables.size > initialVars.length) {
-             // Only prune if size grew
-             // We can iterate backwards? No.
-             // Just recreate the valid keys set?
-             // Actually, Map.keys() iterator is efficient.
-             // Optimization: pass a callback or context to track added vars?
-             // Let's keep it simple for now as 'token regex' was the main memory issue.
-             
-             // Fast pruning:
              const currentKeys = Array.from(ctx.variables.keys());
              for (let vIndex = initialVars.length; vIndex < currentKeys.length; vIndex++) {
                  ctx.variables.delete(currentKeys[vIndex]);
