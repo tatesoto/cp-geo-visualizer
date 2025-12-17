@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Visualizer, { VisualizerHandle } from './components/Visualizer';
 import ObjectList from './components/ObjectList';
 import Header from './components/Header';

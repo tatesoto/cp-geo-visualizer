@@ -6,8 +6,8 @@ import { SNIPPETS, SnippetKey } from '../constants/snippets';
 const INITIAL_KEY: SnippetKey = 'groups';
 
 export const useGeometryData = (executionTimeout: number) => {
-  const [inputText, setInputText] = useState(SNIPPETS[INITIAL_KEY].input);
-  const [formatText, setFormatText] = useState(SNIPPETS[INITIAL_KEY].format);
+  const [inputText, setInputText] = useState<string>(SNIPPETS[INITIAL_KEY].input);
+  const [formatText, setFormatText] = useState<string>(SNIPPETS[INITIAL_KEY].format);
   const [parsedShapes, setParsedShapes] = useState<Shape[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);

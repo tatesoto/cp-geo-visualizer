@@ -3,7 +3,6 @@ import { ChevronDownIcon, ChevronRightIcon, PlayIcon, ChevronLeftIcon, DocumentT
 import { SNIPPETS, SnippetKey } from '../constants/snippets';
 import { Language } from '../types';
 import { t, TRANSLATIONS } from '../constants/translations';
-import { KEYWORDS } from '../services/parser';
 import { getCaretCoordinates } from '../utils/caret';
 
 interface EditorPanelProps {
@@ -134,8 +133,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
               if (formatInputRef.current) {
                   const coords = getCaretCoordinates(formatInputRef.current, cursorPos);
                   // Adjust for scroll
-                  const rect = formatInputRef.current.getBoundingClientRect();
-                  // We need relative coordinates inside the parent div
                   // The parent div is `relative`, so offsetTop/Left of the textarea usually 0
                   // But we need to subtract scrollTop of the textarea
                   setCaretCoords({
@@ -348,7 +345,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                         value=""
                     >
                         <option value="" disabled>{t(lang, 'loadSnippet')}</option>
-                        {Object.entries(SNIPPETS).map(([key, snip]) => (
+                        {Object.entries(SNIPPETS).map(([key, _snip]) => (
                             <option key={key} value={key}>{t(lang, `snippet_${key}` as keyof typeof TRANSLATIONS['en'])}</option>
                         ))}
                     </select>
