@@ -66,6 +66,13 @@ function App() {
       );
   };
 
+  const toggleLanguage = () => {
+    setConfig(prev => ({
+      ...prev,
+      language: prev.language === 'en' ? 'ja' : 'en'
+    }));
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50 text-gray-900 font-sans">
       <Header 
@@ -74,6 +81,7 @@ function App() {
         onOpenSettings={() => setIsSettingsOpen(true)} 
         onOpenReference={() => setIsReferenceOpen(true)}
         onSaveImage={handleSaveImage}
+        onToggleLanguage={toggleLanguage}
         lang={config.language}
       />
 
