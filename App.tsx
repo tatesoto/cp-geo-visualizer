@@ -6,25 +6,32 @@ import EditorPanel from './components/EditorPanel';
 import VisualizerControls from './components/VisualizerControls';
 import SettingsModal from './components/SettingsModal';
 import ReferenceModal from './components/ReferenceModal';
-import { parseInput } from './services/parser';
-import { Shape, ShapeType, AppConfig } from './types';
-import { SNIPPETS } from './constants/snippets';
-import { t } from './constants/translations';
-
-const INITIAL_KEY = 'points';
+import { ShapeType, AppConfig } from './types';
+import { useGeometryData } from './hooks/useGeometryData';
+import { useImageExport } from './hooks/useImageExport';
 
 function App() {
-  const [inputText, setInputText] = useState(SNIPPETS[INITIAL_KEY].input);
-  const [formatText, setFormatText] = useState(SNIPPETS[INITIAL_KEY].format);
-  const [parsedShapes, setParsedShapes] = useState<Shape[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  
   // Configuration State
   const [config, setConfig] = useState<AppConfig>(({
       executionTimeout: 3000,
       renderTimeout: 200,
       language: 'en'
   } as AppConfig));
+
+  // Custom Hooks for Data & Actions
+  const { 
+    inputText, 
+    setInputText, 
+    formatText, 
+    setFormatText, 
+    parsedShapes, 
+    error, 
+    isParsing, 
+    handleParse 
+  } = useGeometryData(config.executionTimeout);
+
+  const visualizerRef = useRef<VisualizerHandle>(null);
+  const { handleSaveImage } = useImageExport(visualizerRef);
 
   // UI State
   const [isObjectListOpen, setIsObjectListOpen] = useState(false);
@@ -33,34 +40,6 @@ function App() {
   const [isEditorOpen, setIsEditorOpen] = useState(true);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [visibleIdTypes, setVisibleIdTypes] = useState<ShapeType[]>([]);
-  const [isParsing, setIsParsing] = useState(false);
-
-  const visualizerRef = useRef<VisualizerHandle>(null);
-
-  const handleParse = () => {
-    setIsParsing(true);
-    
-    // Increase timeout to 100ms to ensure the browser has enough time 
-    // to repaint the UI with the loading spinner before the main thread is blocked.
-    setTimeout(() => {
-        const result = parseInput(formatText, inputText, config.executionTimeout);
-        
-        if (result.error) {
-            setError(result.error);
-        } else {
-            setError(null);
-            setParsedShapes(result.shapes);
-            setSelectedShapeId(null);
-        }
-        setIsParsing(false);
-    }, 100);
-  };
-
-  // Initial parse on mount
-  useEffect(() => {
-    handleParse();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Re-parse when timeout setting changes if there is an error (likely timeout error)
   useEffect(() => {
@@ -69,6 +48,11 @@ function App() {
       }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.executionTimeout]);
+
+  // Reset selection when shapes change
+  useEffect(() => {
+      setSelectedShapeId(null);
+  }, [parsedShapes]);
 
   const toggleSelection = (id: string | null) => {
       setSelectedShapeId(prev => prev === id ? null : id);
@@ -80,30 +64,6 @@ function App() {
               ? prev.filter(t => t !== type) 
               : [...prev, type]
       );
-  };
-
-  const createBlobAndFilename = async () => {
-      if (!visualizerRef.current) return null;
-      const blob = await visualizerRef.current.getCanvasBlob();
-      if (!blob) return null;
-
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const filename = `visualization_${timestamp}.png`;
-      return { blob, filename };
-  };
-
-  const handleSaveImage = async () => {
-      const result = await createBlobAndFilename();
-      if (!result) return;
-      const { blob, filename } = result;
-
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
   };
 
   return (
@@ -123,13 +83,9 @@ function App() {
             isOpen={isEditorOpen}
             onToggle={() => setIsEditorOpen(!isEditorOpen)}
             formatText={formatText}
-            setFormatText={(text) => {
-                setFormatText(text);
-            }}
+            setFormatText={setFormatText}
             inputText={inputText}
-            setInputText={(text) => {
-                setInputText(text);
-            }}
+            setInputText={setInputText}
             onParse={handleParse}
             error={error}
             isParsing={isParsing}
