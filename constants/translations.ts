@@ -65,6 +65,13 @@ export const TRANSLATIONS = {
     ref_poly_adv: "Polygons (Advanced)",
     ref_poly_adv_intro: "Use Push and Poly (without args) to handle polygons with variable vertex counts.",
     ref_poly_uses_pushed: "(Uses pushed points)",
+    // Snippets
+    snippet_default: "Test Cases (Polygons)",
+    snippet_points: "Points Cloud",
+    snippet_segments: "Line Segments",
+    snippet_circles: "Circles",
+    snippet_polygon_simple: "Simple Polygon",
+    snippet_lines: "Lines",
   },
   ja: {
     title: "幾何ビジュアライザ",
@@ -130,6 +137,13 @@ export const TRANSLATIONS = {
     ref_poly_adv: "多角形 (応用)",
     ref_poly_adv_intro: "PushとPoly(引数なし)を使用して、頂点数が可変の多角形を描画します。",
     ref_poly_uses_pushed: "(Pushされた点を使用)",
+    // Snippets
+    snippet_default: "テストケース (多角形)",
+    snippet_points: "点群 (Points Cloud)",
+    snippet_segments: "線分 (Line Segments)",
+    snippet_circles: "円 (Circles)",
+    snippet_polygon_simple: "単純多角形 (Simple Polygon)",
+    snippet_lines: "直線 (Lines)",
   }
 } as const;
 

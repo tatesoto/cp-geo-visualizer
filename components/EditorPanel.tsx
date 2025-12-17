@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { ChevronDownIcon, ChevronRightIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 import { SNIPPETS, SnippetKey } from '../constants/snippets';
 import { Language } from '../types';
-import { t } from '../constants/translations';
+import { t, TRANSLATIONS } from '../constants/translations';
 import { KEYWORDS } from '../services/parser';
 import { getCaretCoordinates } from '../utils/caret';
 
@@ -345,7 +345,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                     >
                         <option value="" disabled>{t(lang, 'loadSnippet')}</option>
                         {Object.entries(SNIPPETS).map(([key, snip]) => (
-                            <option key={key} value={key}>{snip.label}</option>
+                            <option key={key} value={key}>{t(lang, `snippet_${key}` as keyof typeof TRANSLATIONS['en'])}</option>
                         ))}
                     </select>
                 </div>
