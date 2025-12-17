@@ -1,5 +1,5 @@
 import React from 'react';
-import { ListBulletIcon, Cog6ToothIcon, BookOpenIcon } from '@heroicons/react/24/outline';
+import { ListBulletIcon, Cog6ToothIcon, BookOpenIcon, CameraIcon } from '@heroicons/react/24/outline';
 import { Language } from '../types';
 import { t } from '../constants/translations';
 
@@ -8,6 +8,7 @@ interface HeaderProps {
   setIsObjectListOpen: (isOpen: boolean) => void;
   onOpenSettings: () => void;
   onOpenReference: () => void;
+  onSaveImage: () => void;
   lang: Language;
 }
 
@@ -16,10 +17,11 @@ const Header: React.FC<HeaderProps> = ({
     setIsObjectListOpen, 
     onOpenSettings, 
     onOpenReference,
+    onSaveImage,
     lang 
 }) => {
   return (
-    <header className="h-12 border-b border-gray-100 flex items-center justify-between px-4 bg-white/80 backdrop-blur-sm z-20 sticky top-0">
+    <header className="h-12 border-b border-gray-100 flex items-center justify-between px-4 bg-white/80 backdrop-blur-sm z-40 sticky top-0">
       <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center shadow-sm">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -31,6 +33,16 @@ const Header: React.FC<HeaderProps> = ({
       </div>
       
       <div className="flex items-center gap-2">
+          
+          <button
+            onClick={onSaveImage}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium border border-gray-900 bg-black text-white hover:bg-gray-800 shadow-sm transition-all mr-1"
+            title={t(lang, 'saveImage')}
+          >
+            <CameraIcon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{t(lang, 'saveImage')}</span>
+          </button>
+
           <button
             onClick={onOpenReference}
             className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 shadow-sm transition-all"

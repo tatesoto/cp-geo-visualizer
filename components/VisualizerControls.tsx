@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowsPointingInIcon, TagIcon } from '@heroicons/react/24/outline';
+import { ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 import { ShapeType, Language } from '../types';
 import { t } from '../constants/translations';
 
@@ -71,7 +71,6 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
                  })}
              </div>
 
-             {/* Actions Group */}
              <button 
                onClick={onResetView}
                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-black hover:bg-gray-50 transition-all"

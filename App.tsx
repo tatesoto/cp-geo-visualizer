@@ -9,6 +9,7 @@ import ReferenceModal from './components/ReferenceModal';
 import { parseInput } from './services/parser';
 import { Shape, ShapeType, AppConfig } from './types';
 import { SNIPPETS } from './constants/snippets';
+import { t } from './constants/translations';
 
 const INITIAL_KEY = 'points';
 
@@ -81,6 +82,30 @@ function App() {
       );
   };
 
+  const createBlobAndFilename = async () => {
+      if (!visualizerRef.current) return null;
+      const blob = await visualizerRef.current.getCanvasBlob();
+      if (!blob) return null;
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const filename = `visualization_${timestamp}.png`;
+      return { blob, filename };
+  };
+
+  const handleSaveImage = async () => {
+      const result = await createBlobAndFilename();
+      if (!result) return;
+      const { blob, filename } = result;
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50 text-gray-900 font-sans">
       <Header 
@@ -88,6 +113,7 @@ function App() {
         setIsObjectListOpen={setIsObjectListOpen}
         onOpenSettings={() => setIsSettingsOpen(true)} 
         onOpenReference={() => setIsReferenceOpen(true)}
+        onSaveImage={handleSaveImage}
         lang={config.language}
       />
 

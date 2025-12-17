@@ -5,6 +5,7 @@ import { t } from '../constants/translations';
 
 export interface VisualizerHandle {
   resetView: () => void;
+  getCanvasBlob: () => Promise<Blob | null>;
 }
 
 interface VisualizerProps {
@@ -67,7 +68,18 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
   };
 
   useImperativeHandle(ref, () => ({
-    resetView: () => fitToShapes()
+    resetView: () => fitToShapes(),
+    getCanvasBlob: () => {
+        return new Promise<Blob | null>((resolve) => {
+            if (!canvasRef.current) {
+                resolve(null);
+                return;
+            }
+            canvasRef.current.toBlob((blob) => {
+                resolve(blob);
+            }, 'image/png');
+        });
+    }
   }));
 
   useEffect(() => {
@@ -351,7 +363,11 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     if (!ctx) return;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Explicitly fill background with white instead of clearing to transparent
+    // This allows the exported image to have a white background.
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
     ctx.scale(dpr, dpr);
     
     const viewport = viewportRef.current;
