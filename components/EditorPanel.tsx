@@ -1,8 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { ChevronDownIcon, ChevronRightIcon, QuestionMarkCircleIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, CommandLineIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronRightIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 import { SNIPPETS, SnippetKey } from '../constants/snippets';
 import { Language } from '../types';
 import { t } from '../constants/translations';
+import { KEYWORDS } from '../services/parser';
+import { getCaretCoordinates } from '../utils/caret';
 
 interface EditorPanelProps {
   isOpen: boolean;
@@ -19,6 +21,16 @@ interface EditorPanelProps {
 
 const MIN_WIDTH = 250;
 const MAX_WIDTH = 800;
+
+// Proper case keywords for display
+const SUGGESTION_LIST = Array.from(KEYWORDS).filter(k => k.length > 1).map(k => {
+    // Capitalize first letter for better DX if it's not a short alias
+    // 'rep' is kept lowercase by standard convention
+    if (['point', 'line', 'segment', 'circle', 'poly', 'polygon', 'push', 'text', 'read'].includes(k)) {
+        return k.charAt(0).toUpperCase() + k.slice(1);
+    }
+    return k;
+}).sort();
 
 const EditorPanel: React.FC<EditorPanelProps> = ({
   isOpen,
@@ -39,6 +51,12 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   // Resize State
   const [width, setWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
+
+  // Autocomplete State
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionIndex, setSuggestionIndex] = useState(0);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [caretCoords, setCaretCoords] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     if (!isResizing) return;
@@ -94,9 +112,99 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
     e.target.value = '';
   };
 
+  const checkAutocomplete = (text: string, cursorPos: number) => {
+      // Find word before cursor
+      let start = cursorPos - 1;
+      while (start >= 0 && /\w/.test(text[start])) {
+          start--;
+      }
+      const prefix = text.slice(start + 1, cursorPos);
+      
+      if (prefix.length >= 1) {
+          const matches = SUGGESTION_LIST.filter(k => k.toLowerCase().startsWith(prefix.toLowerCase()));
+          if (matches.length > 0) {
+              setSuggestions(matches);
+              setSuggestionIndex(0);
+              setShowSuggestions(true);
+              
+              if (formatInputRef.current) {
+                  const coords = getCaretCoordinates(formatInputRef.current, cursorPos);
+                  // Adjust for scroll
+                  const rect = formatInputRef.current.getBoundingClientRect();
+                  // We need relative coordinates inside the parent div
+                  // The parent div is `relative`, so offsetTop/Left of the textarea usually 0
+                  // But we need to subtract scrollTop of the textarea
+                  setCaretCoords({
+                      top: coords.top - formatInputRef.current.scrollTop + 20, // + lineHeight
+                      left: coords.left - formatInputRef.current.scrollLeft
+                  });
+              }
+              return;
+          }
+      }
+      setShowSuggestions(false);
+  };
+
+  const insertSuggestion = (suggestion: string) => {
+      if (!formatInputRef.current) return;
+      
+      const text = formatText;
+      const cursorPos = formatInputRef.current.selectionStart;
+      
+      let start = cursorPos - 1;
+      while (start >= 0 && /\w/.test(text[start])) {
+          start--;
+      }
+      start++; // Start of the word
+      
+      const newText = text.slice(0, start) + suggestion + ' ' + text.slice(cursorPos);
+      setFormatText(newText);
+      setShowSuggestions(false);
+      
+      // Move cursor
+      setTimeout(() => {
+          if (formatInputRef.current) {
+              const newPos = start + suggestion.length + 1;
+              formatInputRef.current.selectionStart = newPos;
+              formatInputRef.current.selectionEnd = newPos;
+              formatInputRef.current.focus();
+          }
+      }, 0);
+  };
+
+  const handleFormatChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const val = e.target.value;
+      setFormatText(val);
+      checkAutocomplete(val, e.target.selectionStart);
+  };
+
   const handleFormatKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const target = e.currentTarget;
     const { selectionStart, selectionEnd, value } = target;
+
+    // Autocomplete Navigation
+    if (showSuggestions) {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setSuggestionIndex(prev => (prev + 1) % suggestions.length);
+            return;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSuggestionIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
+            return;
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            insertSuggestion(suggestions[suggestionIndex]);
+            return;
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            setShowSuggestions(false);
+            return;
+        }
+    }
 
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -172,6 +280,10 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
     }
   };
 
+  const handleFormatClick = () => {
+      setShowSuggestions(false);
+  };
+
   if (!isOpen) {
       return (
           <div className="w-12 flex flex-col items-center py-4 border-r border-gray-200 bg-white shrink-0 group transition-all hover:bg-gray-50 cursor-pointer z-30" onClick={onToggle}>
@@ -236,19 +348,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                             <option key={key} value={key}>{snip.label}</option>
                         ))}
                     </select>
-
-                    <div className="group/help relative">
-                        <QuestionMarkCircleIcon className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 cursor-pointer"/>
-                        <div className="hidden group-hover/help:block absolute right-0 top-6 w-72 p-4 bg-white border border-gray-200 rounded-lg shadow-xl text-xs text-gray-600 z-50">
-                            <p className="mb-2 font-semibold text-gray-900">{t(lang, 'syntaxRef')}</p>
-                            <div className="space-y-1.5 font-mono text-[11px] leading-relaxed">
-                                <div className="flex gap-2"><span className="text-purple-600">Read</span> <span className="text-gray-500">vars...</span></div>
-                                <div className="flex gap-2"><span className="text-purple-600">rep</span> <span className="text-blue-600">n</span>:</div>
-                                <div className="pl-4 text-gray-400">// indented block</div>
-                                <div className="flex gap-2"><span className="text-purple-600">Point</span> x y <span className="text-gray-400">[color]</span></div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
             
@@ -256,13 +355,33 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                 <textarea
                     ref={formatInputRef}
                     value={formatText}
-                    onChange={(e) => setFormatText(e.target.value)}
+                    onChange={handleFormatChange}
                     onKeyDown={handleFormatKeyDown}
+                    onClick={handleFormatClick}
                     className="absolute inset-0 w-full h-full bg-white text-gray-800 p-4 font-mono text-[13px] resize-none focus:outline-none leading-normal selection:bg-purple-100"
                     spellCheck={false}
                     placeholder="Enter parsing logic..."
                     style={{ tabSize: 4 }}
                 />
+                
+                {/* Autocomplete Popup */}
+                {showSuggestions && (
+                    <div 
+                        className="absolute z-50 bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden flex flex-col min-w-[120px]"
+                        style={{ top: caretCoords.top, left: caretCoords.left }}
+                    >
+                        {suggestions.map((s, i) => (
+                            <div 
+                                key={s}
+                                className={`px-3 py-1.5 text-xs font-mono cursor-pointer transition-colors flex items-center justify-between ${i === suggestionIndex ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                                onClick={() => insertSuggestion(s)}
+                            >
+                                <span>{s}</span>
+                                {i === suggestionIndex && <span className="text-[10px] opacity-70">Enter</span>}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
 

@@ -12,7 +12,7 @@ const COLORS = [
   '#f97316', // orange-500
 ];
 
-const KEYWORDS = new Set([
+export const KEYWORDS = new Set([
   'point', 'p',
   'line', 'l',
   'segment', 's', 'seg',

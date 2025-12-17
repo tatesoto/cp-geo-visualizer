@@ -5,6 +5,7 @@ import Header from './components/Header';
 import EditorPanel from './components/EditorPanel';
 import VisualizerControls from './components/VisualizerControls';
 import SettingsModal from './components/SettingsModal';
+import ReferenceModal from './components/ReferenceModal';
 import { parseInput } from './services/parser';
 import { Shape, ShapeType, AppConfig } from './types';
 import { SNIPPETS } from './constants/snippets';
@@ -18,15 +19,16 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   
   // Configuration State
-  const [config, setConfig] = useState<AppConfig>({
+  const [config, setConfig] = useState<AppConfig>(({
       executionTimeout: 3000,
       renderTimeout: 200,
       language: 'en'
-  });
+  } as AppConfig));
 
   // UI State
   const [isObjectListOpen, setIsObjectListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isReferenceOpen, setIsReferenceOpen] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(true);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [visibleIdTypes, setVisibleIdTypes] = useState<ShapeType[]>([]);
@@ -85,6 +87,7 @@ function App() {
         isObjectListOpen={isObjectListOpen} 
         setIsObjectListOpen={setIsObjectListOpen}
         onOpenSettings={() => setIsSettingsOpen(true)} 
+        onOpenReference={() => setIsReferenceOpen(true)}
         lang={config.language}
       />
 
@@ -146,6 +149,13 @@ function App() {
             config={config} 
             onSave={setConfig} 
             onClose={() => setIsSettingsOpen(false)} 
+          />
+      )}
+      
+      {isReferenceOpen && (
+          <ReferenceModal
+            onClose={() => setIsReferenceOpen(false)}
+            lang={config.language}
           />
       )}
     </div>
