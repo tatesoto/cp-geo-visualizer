@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { ChevronDownIcon, ChevronRightIcon, QuestionMarkCircleIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, CommandLineIcon } from '@heroicons/react/24/outline';
 import { SNIPPETS, SnippetKey } from '../constants/snippets';
 
@@ -13,6 +13,9 @@ interface EditorPanelProps {
   error: string | null;
 }
 
+const MIN_WIDTH = 250;
+const MAX_WIDTH = 800;
+
 const EditorPanel: React.FC<EditorPanelProps> = ({
   isOpen,
   onToggle,
@@ -26,6 +29,41 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   const [isFormatOpen, setIsFormatOpen] = useState(true);
   const [isInputOpen, setIsInputOpen] = useState(true);
   const formatInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Resize State
+  const [width, setWidth] = useState(400);
+  const [isResizing, setIsResizing] = useState(false);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+        let newWidth = e.clientX;
+        if (newWidth < MIN_WIDTH) newWidth = MIN_WIDTH;
+        if (newWidth > MAX_WIDTH) newWidth = MAX_WIDTH;
+        setWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+        setIsResizing(false);
+        document.body.style.cursor = 'default';
+        document.body.style.userSelect = 'auto';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    // Prevent selection and change cursor during drag
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = 'default';
+        document.body.style.userSelect = 'auto';
+    };
+  }, [isResizing]);
 
   const loadSnippet = (key: string) => {
     const snippet = SNIPPETS[key as SnippetKey];
@@ -48,7 +86,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
     reader.readAsText(file);
   };
 
-  // ... (keep handleFormatKeyDown logic same as before)
   const handleFormatKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const target = e.currentTarget;
     const { selectionStart, selectionEnd, value } = target;
@@ -146,7 +183,10 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   }
 
   return (
-    <div className="w-[400px] flex flex-col border-r border-gray-200 bg-gray-50/30 font-sans">
+    <div 
+        className="flex flex-col border-r border-gray-200 bg-gray-50/30 font-sans relative shrink-0"
+        style={{ width: width }}
+    >
       
       {/* Format Editor Section */}
       <div className={`flex flex-col border-b border-gray-200 transition-[flex-grow] duration-300 ease-in-out ${isFormatOpen ? 'flex-1 min-h-[200px]' : 'flex-none'}`}>
@@ -264,6 +304,19 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
           Visualize
         </button>
       </div>
+
+      {/* Resize Handle */}
+      <div 
+        className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-600 transition-colors z-50 flex flex-col justify-center items-center group/handle"
+        onMouseDown={(e) => {
+            e.preventDefault();
+            setIsResizing(true);
+        }}
+      >
+          {/* Visual indicator for handle */}
+          <div className="h-8 w-0.5 bg-gray-300 rounded group-hover/handle:bg-white/50" />
+      </div>
+
     </div>
   );
 };
