@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ChevronDownIcon, ChevronRightIcon, QuestionMarkCircleIcon, ArrowPathIcon, ChevronLeftIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronRightIcon, QuestionMarkCircleIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, CommandLineIcon } from '@heroicons/react/24/outline';
 import { SNIPPETS, SnippetKey } from '../constants/snippets';
 
 interface EditorPanelProps {
@@ -48,6 +48,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
     reader.readAsText(file);
   };
 
+  // ... (keep handleFormatKeyDown logic same as before)
   const handleFormatKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const target = e.currentTarget;
     const { selectionStart, selectionEnd, value } = target;
@@ -56,72 +57,43 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
       e.preventDefault();
 
       if (e.shiftKey) {
-        // Shift + Tab: Unindent
         const firstLineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
         let lastLineEnd = value.indexOf('\n', selectionEnd);
         if (lastLineEnd === -1) lastLineEnd = value.length;
-
         const linesContent = value.substring(firstLineStart, lastLineEnd);
         const lines = linesContent.split('\n');
-
-        let totalRemoved = 0;
         const newLines = lines.map(line => {
-          if (line.startsWith('\t')) {
-            totalRemoved++;
-            return line.substring(1);
-          }
-          if (line.startsWith('    ')) {
-              totalRemoved += 4;
-              return line.substring(4);
-          }
+          if (line.startsWith('\t')) return line.substring(1);
+          if (line.startsWith('    ')) return line.substring(4);
           return line;
         });
-
         const newContent = newLines.join('\n');
-        
         if (linesContent === newContent) return;
-
         const newValue = value.substring(0, firstLineStart) + newContent + value.substring(lastLineEnd);
         setFormatText(newValue);
-
         setTimeout(() => {
             if (formatInputRef.current) {
                 if (selectionStart !== selectionEnd) {
                     formatInputRef.current.selectionStart = firstLineStart;
                     formatInputRef.current.selectionEnd = firstLineStart + newContent.length;
                 } else {
-                    const firstLine = lines[0];
-                    let startShift = 0;
-                    if (firstLine.startsWith('\t')) startShift = 1;
-                    else if (firstLine.startsWith('    ')) startShift = 4;
-                    
-                    const offsetInLine = selectionStart - firstLineStart;
-                    const actualShift = offsetInLine >= startShift ? startShift : offsetInLine;
-                    
-                    const newCursorPos = Math.max(firstLineStart, selectionStart - actualShift);
-                    formatInputRef.current.selectionStart = newCursorPos;
-                    formatInputRef.current.selectionEnd = newCursorPos;
+                    // Simple cursor restore logic
+                    formatInputRef.current.selectionStart = selectionStart; 
+                    formatInputRef.current.selectionEnd = selectionStart;
                 }
             }
         }, 0);
-
       } else {
-        // Tab: Indent
         if (selectionStart !== selectionEnd) {
           const firstLineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
           let lastLineEnd = value.indexOf('\n', selectionEnd);
           if (lastLineEnd === -1) lastLineEnd = value.length;
-
           const linesContent = value.substring(firstLineStart, lastLineEnd);
           const lines = linesContent.split('\n');
-          
           const newLines = lines.map(line => '\t' + line);
           const newContent = newLines.join('\n');
-
           const newValue = value.substring(0, firstLineStart) + newContent + value.substring(lastLineEnd);
-
           setFormatText(newValue);
-
           setTimeout(() => {
               if (formatInputRef.current) {
                   formatInputRef.current.selectionStart = firstLineStart;
@@ -158,141 +130,137 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
 
   if (!isOpen) {
       return (
-          <div className="w-10 flex flex-col items-center py-2 border-r border-slate-800 bg-slate-900 shrink-0 transition-all">
+          <div className="w-12 flex flex-col items-center py-4 border-r border-gray-200 bg-white shrink-0">
               <button 
                   onClick={onToggle}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded mb-2 transition-colors"
-                  title="Expand Editor"
+                  className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-lg transition-colors"
               >
                   <ChevronRightIcon className="w-5 h-5" />
               </button>
-              <div 
-                  className="mt-4 text-slate-500 text-xs tracking-widest font-bold select-none whitespace-nowrap"
-                  style={{ writingMode: 'vertical-lr' }}
-              >
-                  EDITOR
+              <div className="mt-8 flex flex-col gap-6">
+                <span className="text-gray-400" title="Format"><CommandLineIcon className="w-5 h-5"/></span>
+                <span className="text-gray-400" title="Input"><DocumentTextIcon className="w-5 h-5"/></span>
               </div>
           </div>
       );
   }
 
   return (
-    <div className="w-1/3 min-w-[350px] max-w-[600px] flex flex-col border-r border-slate-800 bg-slate-900/50">
+    <div className="w-[400px] flex flex-col border-r border-gray-200 bg-gray-50/30 font-sans">
       
-      {/* Format Editor */}
-      <div className={`flex flex-col border-b border-slate-800 transition-all duration-200 ${isFormatOpen ? 'flex-1 min-h-0' : 'flex-none'}`}>
+      {/* Format Editor Section */}
+      <div className={`flex flex-col border-b border-gray-200 transition-[flex-grow] duration-300 ease-in-out ${isFormatOpen ? 'flex-1 min-h-[200px]' : 'flex-none'}`}>
         <div 
-            className="h-9 bg-slate-900 border-b border-slate-800 flex items-center px-4 justify-between select-none cursor-pointer hover:bg-slate-800 transition-colors"
-            onClick={() => setIsFormatOpen(!isFormatOpen)}
+            className="h-10 bg-white border-b border-gray-100 flex items-center px-4 justify-between select-none group"
         >
-            <div className="flex items-center gap-2">
-                {isFormatOpen ? <ChevronDownIcon className="w-3 h-3 text-slate-500" /> : <ChevronRightIcon className="w-3 h-3 text-slate-500" />}
-                <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Parsing Format</span>
-                    <select 
-                        className="bg-slate-800 text-xs text-slate-300 border border-slate-700 rounded px-2 py-0.5 focus:outline-none focus:border-blue-500 cursor-pointer"
-                        onChange={(e) => {
-                            loadSnippet(e.target.value);
-                        }}
-                        defaultValue=""
-                    >
-                        <option value="" disabled>Examples...</option>
-                        {Object.entries(SNIPPETS).map(([key, snip]) => (
-                            <option key={key} value={key}>{snip.label}</option>
-                        ))}
-                    </select>
-                </div>
+            <div 
+                className="flex items-center gap-2 cursor-pointer text-gray-600 hover:text-black transition-colors"
+                onClick={() => setIsFormatOpen(!isFormatOpen)}
+            >
+                {isFormatOpen ? <ChevronDownIcon className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />}
+                <span className="text-xs font-semibold uppercase tracking-wide">Format Script</span>
             </div>
             
             <div className="flex items-center gap-3">
-                <div className="group relative" onClick={(e) => e.stopPropagation()}>
-                    <QuestionMarkCircleIcon className="w-4 h-4 text-slate-500 hover:text-slate-300 cursor-pointer"/>
-                    <div className="hidden group-hover:block absolute right-0 top-6 w-80 p-3 bg-slate-800 border border-slate-700 rounded shadow-xl text-xs text-slate-300 z-50">
-                        <p className="mb-2 font-bold text-slate-100">Syntax Guide</p>
-                        <ul className="list-disc pl-3 space-y-1">
-                            <li><code>Read var1 var2</code>: Read input numbers</li>
-                            <li><code>rep n:</code>: Repeat block n times</li>
-                            <li><code>Point x y [color] ["label"]</code></li>
-                            <li><code>Line x1 y1 x2 y2</code>: Infinite line</li>
-                            <li><code>Seg x1 y1 x2 y2</code>: Line segment</li>
-                            <li><code>Circle x y r</code>: Circle</li>
-                            <li><code>Push x y</code>: Buffer for polygon</li>
-                            <li><code>Poly</code>: Draw polygon from buffer</li>
-                            <li><code>Text x y [size] "content"</code></li>
-                            <li><code>// ...</code>: Comment</li>
-                        </ul>
+                 <select 
+                    className="bg-transparent text-xs text-gray-500 hover:text-gray-900 border-none outline-none cursor-pointer pr-1 transition-colors text-right appearance-none"
+                    onChange={(e) => loadSnippet(e.target.value)}
+                    value=""
+                >
+                    <option value="" disabled>Load Snippet...</option>
+                    {Object.entries(SNIPPETS).map(([key, snip]) => (
+                        <option key={key} value={key}>{snip.label}</option>
+                    ))}
+                </select>
+
+                <div className="group/help relative">
+                    <QuestionMarkCircleIcon className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-pointer"/>
+                    {/* Tooltip */}
+                    <div className="hidden group-hover/help:block absolute right-0 top-6 w-72 p-4 bg-white border border-gray-200 rounded-lg shadow-xl text-xs text-gray-600 z-50">
+                        <p className="mb-2 font-semibold text-gray-900">Syntax Reference</p>
+                        <div className="space-y-1.5 font-mono text-[11px] leading-relaxed">
+                            <div className="flex gap-2"><span className="text-purple-600">Read</span> <span className="text-gray-500">vars...</span></div>
+                            <div className="flex gap-2"><span className="text-purple-600">rep</span> <span className="text-blue-600">n</span>:</div>
+                            <div className="pl-4 text-gray-400">// indented block</div>
+                            <div className="flex gap-2"><span className="text-purple-600">Point</span> x y <span className="text-gray-400">[color]</span></div>
+                            <div className="flex gap-2"><span className="text-purple-600">Line</span> x1 y1 x2 y2</div>
+                            <div className="flex gap-2"><span className="text-purple-600">Circle</span> x y r</div>
+                        </div>
                     </div>
                 </div>
 
-                <div 
-                    className="pl-3 border-l border-slate-700" 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onToggle();
-                    }}
-                >
-                     <button className="text-slate-500 hover:text-white" title="Collapse Panel">
-                        <ChevronLeftIcon className="w-4 h-4" />
-                     </button>
-                </div>
+                <button onClick={onToggle} className="text-gray-400 hover:text-black ml-2" title="Collapse">
+                    <ChevronLeftIcon className="w-4 h-4" />
+                </button>
             </div>
         </div>
+        
         {isFormatOpen && (
-            <textarea
-            ref={formatInputRef}
-            value={formatText}
-            onChange={(e) => setFormatText(e.target.value)}
-            onKeyDown={handleFormatKeyDown}
-            className="flex-1 bg-[#0d1117] text-slate-300 p-4 font-mono text-sm resize-none focus:outline-none leading-relaxed"
-            spellCheck={false}
-            placeholder="Enter format script..."
-            style={{ tabSize: 4 }}
-            />
+            <div className="flex-1 relative group">
+                <textarea
+                    ref={formatInputRef}
+                    value={formatText}
+                    onChange={(e) => setFormatText(e.target.value)}
+                    onKeyDown={handleFormatKeyDown}
+                    className="absolute inset-0 w-full h-full bg-white text-gray-800 p-4 font-mono text-[13px] resize-none focus:outline-none leading-normal selection:bg-purple-100"
+                    spellCheck={false}
+                    placeholder="Enter parsing logic..."
+                    style={{ tabSize: 4 }}
+                />
+            </div>
         )}
       </div>
 
-      {/* Input Editor */}
-      <div className={`flex flex-col transition-all duration-200 ${isInputOpen ? 'flex-1 min-h-0' : 'flex-none'}`}>
+      {/* Input Data Section */}
+      <div className={`flex flex-col transition-[flex-grow] duration-300 ease-in-out ${isInputOpen ? 'flex-1 min-h-[150px]' : 'flex-none'}`}>
          <div 
-            className="h-9 bg-slate-900 border-b border-slate-800 flex items-center px-4 justify-between select-none cursor-pointer hover:bg-slate-800 transition-colors"
-            onClick={() => setIsInputOpen(!isInputOpen)}
+            className="h-10 bg-white border-b border-gray-100 flex items-center px-4 justify-between select-none border-t border-gray-200"
          >
-            <div className="flex items-center gap-2">
-                {isInputOpen ? <ChevronDownIcon className="w-3 h-3 text-slate-500" /> : <ChevronRightIcon className="w-3 h-3 text-slate-500" />}
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Input Data</span>
+            <div 
+                className="flex items-center gap-2 cursor-pointer text-gray-600 hover:text-black transition-colors"
+                onClick={() => setIsInputOpen(!isInputOpen)}
+            >
+                {isInputOpen ? <ChevronDownIcon className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />}
+                <span className="text-xs font-semibold uppercase tracking-wide">Input Data</span>
             </div>
             <label 
-                className="text-xs text-blue-400 hover:text-blue-300 cursor-pointer flex items-center gap-1"
-                onClick={(e) => e.stopPropagation()}
+                className="text-xs text-gray-500 hover:text-gray-900 cursor-pointer flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-gray-100"
             >
-                <span>Load File</span>
+                <DocumentTextIcon className="w-3.5 h-3.5" />
+                <span>Upload</span>
                 <input type="file" className="hidden" onChange={handleFileUpload} />
             </label>
         </div>
+        
         {isInputOpen && (
-            <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            className="flex-1 bg-[#0d1117] text-slate-300 p-4 font-mono text-sm resize-none focus:outline-none leading-relaxed"
-            spellCheck={false}
-            placeholder="Paste test case input here..."
-            style={{ tabSize: 4 }}
-            />
+            <div className="flex-1 relative">
+                <textarea
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    className="absolute inset-0 w-full h-full bg-white text-gray-800 p-4 font-mono text-[13px] resize-none focus:outline-none leading-normal selection:bg-purple-100"
+                    spellCheck={false}
+                    placeholder="Paste input data here..."
+                    style={{ tabSize: 4 }}
+                />
+            </div>
         )}
       </div>
 
-      {/* Action Bar */}
-      <div className="p-4 bg-slate-900 border-t border-slate-800">
-        {error && (
-            <div className="mb-3 px-3 py-2 bg-red-900/30 border border-red-800 rounded text-red-200 text-xs font-mono break-all whitespace-pre-wrap">
-                {error}
+      {/* Action Area */}
+      <div className="p-4 bg-white border-t border-gray-200 shrink-0">
+        {error ? (
+            <div className="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded text-red-600 text-xs font-mono break-all whitespace-pre-wrap flex gap-2 items-start">
+                 <span className="font-bold select-none">Error:</span> {error}
             </div>
+        ) : (
+            <div className="mb-3 h-[1px]"></div> 
         )}
+        
         <button
           onClick={onParse}
-          className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition-colors shadow-lg shadow-blue-900/20"
+          className="w-full group relative flex justify-center items-center gap-2 bg-black hover:bg-gray-800 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-all shadow-sm active:scale-[0.98]"
         >
-          <ArrowPathIcon className="w-4 h-4" />
+          <PlayIcon className="w-4 h-4 text-gray-300 group-hover:text-white transition-colors" />
           Visualize
         </button>
       </div>

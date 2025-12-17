@@ -11,28 +11,28 @@ interface VisualizerControlsProps {
 const ID_TOGGLE_OPTIONS = [
     { 
         type: ShapeType.POINT, 
-        icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5" /></svg>,
-        title: "Points"
+        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" /></svg>,
+        label: "Points"
     },
     { 
         type: ShapeType.SEGMENT, 
-        icon: <svg className="w-4 h-4" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="20" x2="20" y2="4" /></svg>,
-        title: "Segments"
+        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="4" y1="20" x2="20" y2="4" /></svg>,
+        label: "Segments"
     },
     { 
         type: ShapeType.LINE, 
-        icon: <svg className="w-4 h-4" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><line x1="2" y1="22" x2="22" y2="2" /><path d="M19 2L22 2L22 5" fill="none"/><path d="M5 22L2 22L2 19" fill="none"/></svg>,
-        title: "Lines"
+        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><line x1="2" y1="22" x2="22" y2="2" /></svg>,
+        label: "Lines"
     },
     { 
         type: ShapeType.CIRCLE, 
-        icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="7" /></svg>,
-        title: "Circles"
+        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="7" /></svg>,
+        label: "Circles"
     },
     { 
         type: ShapeType.POLYGON, 
-        icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4L4 20L20 20L12 4Z" /></svg>,
-        title: "Polygons"
+        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 4L4 20L20 20L12 4Z" /></svg>,
+        label: "Poly"
     }
 ];
 
@@ -42,39 +42,39 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
   onResetView 
 }) => {
   return (
-    <div className="absolute top-4 right-4 flex flex-col gap-2 pointer-events-none">
-         <div className="flex flex-col gap-2 pointer-events-auto">
+    <div className="absolute top-6 right-6 flex flex-col gap-3 pointer-events-none z-10">
+         {/* Floating Island Container */}
+         <div className="pointer-events-auto flex items-center bg-white rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-gray-200/60 p-1 gap-1 backdrop-blur-sm">
              
-             {/* ID Toggle Button with Hover Menu */}
-             <div className="group relative flex items-center justify-end">
-                 {/* Flyout Menu */}
-                 <div className="absolute right-full mr-2 hidden group-hover:flex bg-slate-800/90 backdrop-blur border border-slate-700 rounded p-1 gap-1 shadow-xl transition-all">
-                     {ID_TOGGLE_OPTIONS.map((opt) => (
+             {/* ID Toggles Group */}
+             <div className="flex items-center gap-0.5 border-r border-gray-100 pr-1 mr-1">
+                 {ID_TOGGLE_OPTIONS.map((opt) => {
+                     const isActive = visibleIdTypes.includes(opt.type);
+                     return (
                          <button 
                             key={opt.type}
                             onClick={() => onToggleIdType(opt.type)}
-                            className={`p-1.5 rounded border transition-colors ${visibleIdTypes.includes(opt.type) ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-700 border-slate-600 text-slate-400 hover:bg-slate-600'}`}
-                            title={`Toggle ${opt.title} IDs`}
+                            className={`
+                                w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200
+                                ${isActive 
+                                    ? 'bg-black text-white shadow-sm' 
+                                    : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'}
+                            `}
+                            title={`Toggle ${opt.label} IDs`}
                          >
                              {opt.icon}
                          </button>
-                     ))}
-                 </div>
-
-                 <button 
-                   className={`p-2 rounded border shadow-lg transition flex items-center justify-center ${visibleIdTypes.length > 0 ? 'bg-yellow-600/80 border-yellow-500 text-white' : 'bg-slate-800/80 backdrop-blur border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
-                   title="Toggle IDs (Hover for options)"
-                 >
-                   <TagIcon className="w-5 h-5" />
-                 </button>
+                     );
+                 })}
              </div>
 
+             {/* Actions Group */}
              <button 
                onClick={onResetView}
-               className="bg-slate-800/80 backdrop-blur p-2 rounded text-slate-400 hover:text-white border border-slate-700 shadow-lg hover:bg-slate-700 transition flex items-center justify-center"
+               className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-black hover:bg-gray-50 transition-all"
                title="Fit to Screen"
               >
-               <ArrowsPointingInIcon className="w-5 h-5" />
+               <ArrowsPointingInIcon className="w-4 h-4" />
              </button>
          </div>
     </div>

@@ -55,7 +55,7 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-slate-200 font-sans">
+    <div className="flex flex-col h-screen bg-gray-50 text-gray-900 font-sans">
       <Header 
         isObjectListOpen={isObjectListOpen} 
         setIsObjectListOpen={setIsObjectListOpen} 
@@ -79,7 +79,7 @@ function App() {
         />
 
         {/* Right Panel: Visualization & Object List */}
-        <div className="flex-1 flex overflow-hidden bg-black relative">
+        <div className="flex-1 flex overflow-hidden bg-white relative">
             <div className="flex-1 relative min-w-0">
                 <Visualizer 
                     ref={visualizerRef}
