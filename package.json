@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "homepage": "https://tatesoto.github.io/cp-geo-visualizer",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
