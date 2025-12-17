@@ -161,6 +161,83 @@ function validateVariableName(name: string) {
     }
 }
 
+function evaluateExpression(expr: string, ctx: ParserContext): number {
+    const tokens: string[] = [];
+    const regex = /(\d+(?:\.\d+)?)|([a-zA-Z_][a-zA-Z0-9_]*)|([\+\-\*\/\(\)%])/g;
+    let match;
+    while ((match = regex.exec(expr)) !== null) {
+        tokens.push(match[0]);
+    }
+  
+    if (tokens.length === 0) throw new Error("Empty expression in rep statement");
+  
+    let pos = 0;
+    const peek = () => tokens[pos];
+    const consume = () => tokens[pos++];
+  
+    const parseFactor = (): number => {
+        const token = consume();
+        if (!token) throw new Error("Unexpected end of expression");
+  
+        if (token === '(') {
+            const val = parseExpr(); 
+            if (consume() !== ')') throw new Error("Expected ')'");
+            return val;
+        }
+        
+        if (token === '-') {
+            return -parseFactor();
+        }
+
+        if (token === '+') {
+            return parseFactor();
+        }
+  
+        // Number literal check (simplified since we rely on resolveValue for everything else)
+        // Try resolving as value (variable or number)
+        return ctx.resolveValue(token);
+    }
+  
+    const parseTerm = (): number => {
+        let left = parseFactor();
+        while (pos < tokens.length) {
+            const op = peek();
+            if (op === '*' || op === '/' || op === '%') {
+                consume();
+                const right = parseFactor();
+                if (op === '*') left *= right;
+                else if (op === '/') left /= right;
+                else if (op === '%') left %= right;
+            } else {
+                break;
+            }
+        }
+        return left;
+    }
+  
+    const parseExpr = (): number => {
+        let left = parseTerm();
+        while (pos < tokens.length) {
+            const op = peek();
+            if (op === '+' || op === '-') {
+                consume();
+                const right = parseTerm();
+                if (op === '+') left += right;
+                else left -= right;
+            } else {
+                break;
+            }
+        }
+        return left;
+    }
+  
+    const result = parseExpr();
+    if (pos < tokens.length) {
+       // Optional: warn about unused tokens or strict check
+    }
+    return result;
+}
+
 function processBlock(lines: string[], baseIndent: number, ctx: ParserContext) {
   let i = 0;
   while (i < lines.length) {
@@ -181,11 +258,11 @@ function processBlock(lines: string[], baseIndent: number, ctx: ParserContext) {
 
     // Check for "rep" command
     if (trimmed.startsWith('rep ')) {
-      const parts = trimmed.split(/\s+/); // rep n:
-      let countVar = parts[1];
-      if (countVar.endsWith(':')) countVar = countVar.slice(0, -1);
+      // Parse expression: rep <expr>:
+      let exprStr = trimmed.slice(4).trim();
+      if (exprStr.endsWith(':')) exprStr = exprStr.slice(0, -1).trim();
 
-      const count = ctx.resolveValue(countVar);
+      const count = evaluateExpression(exprStr, ctx);
       
       const loopBlockLines: string[] = [];
       let j = i + 1;
@@ -219,6 +296,8 @@ function processBlock(lines: string[], baseIndent: number, ctx: ParserContext) {
 
       const initialVars = Array.from(ctx.variables.keys());
       
+      // Use floor to ensure integer loop count, though floating point loops work in JS (k < 2.5 runs 0,1,2)
+      // Standardize behavior to integer count if possible, but let's stick to simple comparison
       for (let k = 0; k < count; k++) {
         ctx.checkTimeout();
         processBlock(loopBlockLines, blockIndent, ctx);
