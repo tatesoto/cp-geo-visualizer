@@ -13,6 +13,7 @@ interface VisualizerProps {
   shapes: Shape[];
   highlightedShapeId?: string | null;
   visibleIdTypes?: ShapeType[];
+  activeGroupId?: string | null;
   renderTimeout?: number;
   lang: Language;
 }
@@ -21,6 +22,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     shapes, 
     highlightedShapeId, 
     visibleIdTypes = [], 
+    activeGroupId = null,
     renderTimeout = 200,
     lang
 }, ref) => {
@@ -34,6 +36,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
   const highlightedRef = useRef<string | null | undefined>(highlightedShapeId);
   const visibleIdTypesRef = useRef(visibleIdTypes);
   const renderTimeoutRef = useRef(renderTimeout);
+  const activeGroupIdRef = useRef(activeGroupId);
 
   const [hoverInfo, setHoverInfo] = useState<{x: number, y: number, text: string} | null>(null);
 
@@ -85,9 +88,20 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     const cullMinY = viewMinY - padding;
     const cullMaxY = viewMaxY + padding;
 
+    const currentGroupId = activeGroupIdRef.current;
+
     // Fast visibility check
     const isVisible = (s: Shape): boolean => {
+        // Group Filter
+        if (currentGroupId !== null && s.groupId !== currentGroupId) {
+            // Always show highlighted shape even if outside group? 
+            // Let's hide it if it's not in the group to avoid confusion, 
+            // unless we want to allow cross-group selection.
+            if (s.id !== highlightedRef.current) return false;
+        }
+
         if (s.id === highlightedRef.current) return true; 
+
         switch (s.type) {
             case ShapeType.POINT:
             case ShapeType.TEXT:
@@ -138,7 +152,10 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     if (highlightedRef.current) {
         const shape = shapesRef.current.find(s => s.id === highlightedRef.current);
         if (shape) {
-            drawShape(ctx, shape, viewport, width, height, true, visibleIdTypesRef.current);
+            // Only draw if it belongs to current group or no group selected
+            if (!currentGroupId || shape.groupId === currentGroupId) {
+                 drawShape(ctx, shape, viewport, width, height, true, visibleIdTypesRef.current);
+            }
         }
     }
 
@@ -151,8 +168,15 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
 
   // --- View Control Logic ---
 
-  const fitToShapes = () => {
-    const bbox = getBoundingBox(shapesRef.current);
+  const fitToShapes = useCallback(() => {
+    let visibleShapes = shapesRef.current;
+    
+    // Filter by group for bounding box
+    if (activeGroupIdRef.current) {
+        visibleShapes = visibleShapes.filter(s => s.groupId === activeGroupIdRef.current);
+    }
+
+    const bbox = getBoundingBox(visibleShapes);
     const container = containerRef.current;
     if (!container) return;
 
@@ -174,7 +198,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
       scale: scale
     };
     requestRender();
-  };
+  }, []);
 
   useImperativeHandle(ref, () => ({
     resetView: () => fitToShapes(),
@@ -195,17 +219,28 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
 
   useEffect(() => {
     shapesRef.current = shapes;
+    // When shapes change (e.g. re-parse), we usually want to fit view.
+    // However, if we are just typing, maybe not? 
+    // For now, let's fit view on fresh shapes.
     fitToShapes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shapes]);
+  }, [shapes, fitToShapes]);
 
   useEffect(() => {
     highlightedRef.current = highlightedShapeId;
     visibleIdTypesRef.current = visibleIdTypes;
     renderTimeoutRef.current = renderTimeout;
-    requestRender();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [highlightedShapeId, visibleIdTypes, renderTimeout]);
+    
+    // Check if active group changed
+    const prevGroupId = activeGroupIdRef.current;
+    activeGroupIdRef.current = activeGroupId;
+    
+    if (prevGroupId !== activeGroupId) {
+        fitToShapes(); // Auto zoom to new group
+    } else {
+        requestRender();
+    }
+    
+  }, [highlightedShapeId, visibleIdTypes, renderTimeout, activeGroupId, fitToShapes]);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -274,8 +309,13 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     let hoveredShape: Shape | null = null;
     const threshold = 10; 
     
+    // Iterate reverse to match draw order (top on top)
     for (let i = shapesRef.current.length - 1; i >= 0; i--) {
         const s = shapesRef.current[i];
+        
+        // Skip filtered
+        if (activeGroupIdRef.current && s.groupId !== activeGroupIdRef.current) continue;
+
         if (s.type === ShapeType.POINT) {
             const screenP = worldToScreen(s.x, s.y, viewport, rect.width, rect.height);
             const dist = Math.sqrt(Math.pow(screenP.x - mouseX, 2) + Math.pow(screenP.y - mouseY, 2));
@@ -327,6 +367,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
         <span className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
             {shapes.length} {t(lang, 'objects')}
+            {activeGroupId && <span className="text-indigo-500 ml-1">[{activeGroupId}]</span>}
         </span>
         <span className="opacity-50">|</span>
         <span>{t(lang, 'scrollToZoom')}</span>

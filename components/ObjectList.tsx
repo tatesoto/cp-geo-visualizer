@@ -8,6 +8,9 @@ interface ObjectListProps {
   highlightedShapeId: string | null;
   onSelectShape: (id: string | null) => void;
   onClose: () => void;
+  activeGroupId: string | null;
+  availableGroups: string[];
+  onSelectGroup: (groupId: string | null) => void;
   lang: Language;
 }
 
@@ -65,6 +68,11 @@ const VirtualSection = ({
                                     {shape.id}
                                 </span>
                                 <div className="flex items-center gap-2">
+                                     {shape.groupId && (
+                                         <span className="text-[9px] text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 rounded-sm font-mono whitespace-nowrap">
+                                             G:{shape.groupId}
+                                         </span>
+                                     )}
                                      {shape.label && <span className="text-[9px] text-gray-500 bg-gray-100 px-1.5 rounded-sm">{shape.label}</span>}
                                      <span className="text-[10px] text-gray-400 font-mono truncate max-w-[100px] text-right">
                                         {getInfo(shape)}
@@ -79,7 +87,16 @@ const VirtualSection = ({
     );
 };
 
-const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onSelectShape, onClose, lang }) => {
+const ObjectList: React.FC<ObjectListProps> = ({ 
+  shapes, 
+  highlightedShapeId, 
+  onSelectShape, 
+  onClose, 
+  activeGroupId,
+  availableGroups,
+  onSelectGroup,
+  lang 
+}) => {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     [ShapeType.POINT]: true,
     [ShapeType.SEGMENT]: true,
@@ -89,14 +106,20 @@ const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onS
     [ShapeType.TEXT]: true,
   });
 
+  // Filter shapes based on activeGroupId
+  const filteredShapes = useMemo(() => {
+    if (!activeGroupId) return shapes;
+    return shapes.filter(s => s.groupId === activeGroupId);
+  }, [shapes, activeGroupId]);
+
   const groupedShapes = useMemo(() => {
     const groups: Partial<Record<ShapeType, Shape[]>> = {};
-    shapes.forEach(shape => {
+    filteredShapes.forEach(shape => {
       if (!groups[shape.type]) groups[shape.type] = [];
       groups[shape.type]!.push(shape);
     });
     return groups;
-  }, [shapes]);
+  }, [filteredShapes]);
 
   const toggleSection = (type: string) => {
     setOpenSections(prev => ({ ...prev, [type]: !prev[type] }));
@@ -137,10 +160,37 @@ const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onS
 
   return (
     <div className="w-[320px] bg-white border-l border-gray-200 flex flex-col h-full shadow-2xl z-30">
-      <div className="h-12 bg-white border-b border-gray-100 flex items-center justify-between px-4 shrink-0">
-        <span className="text-xs font-semibold text-gray-900 tracking-tight">{t(lang, 'inspector')}</span>
-        <div className="flex items-center gap-3">
-            <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{shapes.length} items</span>
+      <div className="h-12 bg-white border-b border-gray-100 flex items-center justify-between px-4 shrink-0 gap-2">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+            <span className="text-xs font-semibold text-gray-900 tracking-tight whitespace-nowrap">{t(lang, 'inspector')}</span>
+            
+            {availableGroups.length > 0 && (
+                <>
+                <div className="h-4 w-px bg-gray-200"></div>
+                <div className="relative flex-1 min-w-0 max-w-[140px]">
+                    <select
+                        value={activeGroupId || ''}
+                        onChange={(e) => onSelectGroup(e.target.value || null)}
+                        className="w-full bg-gray-50 text-[11px] font-medium text-gray-700 hover:bg-gray-100 rounded-md py-1 pl-2 pr-5 border border-gray-200 outline-none appearance-none cursor-pointer transition-colors truncate"
+                    >
+                        <option value="">{t(lang, 'group_all')}</option>
+                        {availableGroups.length > 0 && <hr />}
+                        {availableGroups.map(g => (
+                            <option key={g} value={g}>{g}</option>
+                        ))}
+                    </select>
+                    <div className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2">
+                        <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                </div>
+                </>
+            )}
+        </div>
+        
+        <div className="flex items-center gap-3 shrink-0">
+            {availableGroups.length === 0 && <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full whitespace-nowrap">{filteredShapes.length} items</span>}
+            {availableGroups.length > 0 && <span className="text-[10px] text-gray-400 whitespace-nowrap">{filteredShapes.length}</span>}
+
             <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-900 transition-colors"
@@ -151,7 +201,7 @@ const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onS
       </div>
       
       <div className="flex-1 overflow-y-auto bg-gray-50/50 p-2 space-y-2">
-        {shapes.length === 0 ? (
+        {filteredShapes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-gray-400">
              <span className="text-sm">{t(lang, 'noObjects')}</span>
           </div>

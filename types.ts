@@ -12,6 +12,7 @@ export interface BaseShape {
   type: ShapeType;
   color?: string;
   label?: string;
+  groupId?: string;
 }
 
 export interface PointShape extends BaseShape {

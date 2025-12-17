@@ -54,11 +54,61 @@ const ReferenceModal: React.FC<ReferenceModalProps> = ({ onClose, lang }) => {
               <tbody>
                 <Row syntax={<>Read <span className="text-gray-400">vars...</span></>} desc={t(lang, 'ref_desc_read')} />
                 <Row syntax={<>
-                    <div>rep <span className="text-blue-600">N</span>:</div>
+                    <div>rep <span className="text-pink-600">[i]</span> <span className="text-blue-600">N</span>:</div>
                     <div className="pl-4 text-gray-400">...</div>
                 </>} desc={t(lang, 'ref_desc_rep')} />
               </tbody>
             </table>
+          </section>
+
+          {/* Section: Groups */}
+          <section>
+            <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="w-1 h-4 bg-yellow-500 rounded-full"></span>
+                {t(lang, 'ref_groups')}
+            </h3>
+            <p className="text-xs text-gray-600 leading-relaxed mb-3">
+               {t(lang, 'ref_group_detail')}
+            </p>
+            <table className="w-full text-left border-collapse mb-3">
+               <tbody>
+                <Row syntax={<>
+                    <div>Group <span className="text-blue-600">ID</span>:</div>
+                    <div className="pl-4 text-gray-400">...</div>
+                </>} desc={t(lang, 'ref_desc_group')} />
+               </tbody>
+            </table>
+            
+            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1">{t(lang, 'ref_example')}</p>
+                <div className="flex gap-4">
+                    <div className="flex-1">
+                        <div className="text-[10px] text-gray-400 mb-1">Format Script</div>
+                        <pre className="font-mono text-xs text-gray-700 leading-relaxed">
+{`Read t         // Number of cases
+rep i t:       // Loop t times
+    Group i:   // Group 0, Group 1...
+        Read n
+        rep n:
+            Read x y
+            Point x y`}
+                        </pre>
+                    </div>
+                    <div className="flex-1 border-l border-gray-200 pl-4">
+                        <div className="text-[10px] text-gray-400 mb-1">Input Data</div>
+                        <pre className="font-mono text-xs text-gray-700 leading-relaxed">
+{`2           // t=2
+3           // n=3 (Case 0)
+0 0
+10 10
+20 0
+2           // n=2 (Case 1)
+50 50
+60 60`}
+                        </pre>
+                    </div>
+                </div>
+            </div>
           </section>
 
           {/* Section: Shapes */}
@@ -100,17 +150,6 @@ const ReferenceModal: React.FC<ReferenceModalProps> = ({ onClose, lang }) => {
                 <Row syntax="Poly" desc={`${t(lang, 'ref_desc_poly')} ${t(lang, 'ref_poly_uses_pushed')}`} />
                </tbody>
             </table>
-            
-            <div className="mt-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1">{t(lang, 'ref_example')}</p>
-                <pre className="font-mono text-xs text-gray-700">
-{`Read n      // Vertices count
-rep n:
-    Read x y
-    Push x y
-Poly        // Draw polygon from pushed points`}
-                </pre>
-            </div>
           </section>
 
           {/* Section: Colors & Labels */}

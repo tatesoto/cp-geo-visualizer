@@ -7,6 +7,9 @@ interface VisualizerControlsProps {
   visibleIdTypes: ShapeType[];
   onToggleIdType: (type: ShapeType) => void;
   onResetView: () => void;
+  availableGroups: string[];
+  activeGroupId: string | null;
+  onSelectGroup: (groupId: string | null) => void;
   lang: Language;
 }
 
@@ -14,6 +17,9 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
   visibleIdTypes, 
   onToggleIdType, 
   onResetView,
+  availableGroups,
+  activeGroupId,
+  onSelectGroup,
   lang
 }) => {
   const ID_TOGGLE_OPTIONS = [
@@ -49,6 +55,32 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
          {/* Floating Island Container */}
          <div className="pointer-events-auto flex items-center bg-white rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-gray-200/60 p-1 gap-1 backdrop-blur-sm">
              
+             {/* Group Selector */}
+             {availableGroups.length > 0 && (
+                 <>
+                    <div className="flex items-center pl-3 pr-1 py-1 gap-2">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide select-none">{t(lang, 'group_label')}</span>
+                        <div className="relative">
+                            <select
+                                value={activeGroupId || ''}
+                                onChange={(e) => onSelectGroup(e.target.value || null)}
+                                className="bg-transparent text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-lg pl-2 pr-6 py-1 border border-transparent hover:border-gray-200 outline-none appearance-none cursor-pointer h-7 min-w-[60px] transition-colors"
+                            >
+                                <option value="">{t(lang, 'group_all')}</option>
+                                <hr />
+                                {availableGroups.map(g => (
+                                    <option key={g} value={g}>{g}</option>
+                                ))}
+                            </select>
+                            <div className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2">
+                                <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="w-px h-5 bg-gray-100 mx-0.5"></div>
+                 </>
+             )}
+
              {/* ID Toggles Group */}
              <div className="flex items-center gap-0.5 border-r border-gray-100 pr-1 mr-1">
                  {ID_TOGGLE_OPTIONS.map((opt) => {

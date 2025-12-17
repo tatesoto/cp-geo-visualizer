@@ -1,24 +1,36 @@
 export const SNIPPETS = {
-  default: {
-    label: "Test Cases (Polygons)",
+  groups: {
+    label: "Groups (Test Cases)",
     format: `Read t
-rep t:
-\tRead n
-\trep n:
-\t\tRead x y
-\t\tPush x y
-\t\tPoint x y
-\tPoly`,
-    input: `2
-3
+rep i t:
+\tGroup i:
+\t\tRead n
+\t\trep n:
+\t\t\tRead x y
+\t\t\tPoint x y`,
+    input: `3
+10
 0 0
-50 -20
-20 40
+10 10
+20 5
+30 15
+40 10
+50 20
+60 15
+70 25
+80 20
+90 30
+5
+0 50
+20 50
+40 50
+60 50
+80 50
 4
--50 -50
--20 -50
--20 -20
--50 -20`
+50 0
+50 20
+30 10
+70 10`
   },
   points: {
     label: "Points Cloud",

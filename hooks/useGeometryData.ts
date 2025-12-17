@@ -3,7 +3,7 @@ import { Shape } from '../types';
 import { parseInput } from '../services/parser';
 import { SNIPPETS, SnippetKey } from '../constants/snippets';
 
-const INITIAL_KEY: SnippetKey = 'points';
+const INITIAL_KEY: SnippetKey = 'groups';
 
 export const useGeometryData = (executionTimeout: number) => {
   const [inputText, setInputText] = useState(SNIPPETS[INITIAL_KEY].input);

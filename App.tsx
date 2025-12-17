@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Visualizer, { VisualizerHandle } from './components/Visualizer';
 import ObjectList from './components/ObjectList';
 import Header from './components/Header';
@@ -40,6 +40,16 @@ function App() {
   const [isEditorOpen, setIsEditorOpen] = useState(true);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [visibleIdTypes, setVisibleIdTypes] = useState<ShapeType[]>([]);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+
+  // Extract Groups
+  const availableGroups = useMemo(() => {
+    const groups = new Set<string>();
+    parsedShapes.forEach(s => {
+      if (s.groupId) groups.add(s.groupId);
+    });
+    return Array.from(groups);
+  }, [parsedShapes]);
 
   // Re-parse when timeout setting changes if there is an error (likely timeout error)
   useEffect(() => {
@@ -52,7 +62,11 @@ function App() {
   // Reset selection when shapes change
   useEffect(() => {
       setSelectedShapeId(null);
-  }, [parsedShapes]);
+      // If the current active group no longer exists, reset it (optional, maybe keep it if user is typing)
+      if (activeGroupId && !availableGroups.includes(activeGroupId)) {
+        setActiveGroupId(null);
+      }
+  }, [parsedShapes, availableGroups, activeGroupId]);
 
   const toggleSelection = (id: string | null) => {
       setSelectedShapeId(prev => prev === id ? null : id);
@@ -108,6 +122,7 @@ function App() {
                     shapes={parsedShapes} 
                     highlightedShapeId={selectedShapeId}
                     visibleIdTypes={visibleIdTypes}
+                    activeGroupId={activeGroupId}
                     renderTimeout={config.renderTimeout}
                     lang={config.language}
                 />
@@ -116,6 +131,9 @@ function App() {
                     visibleIdTypes={visibleIdTypes}
                     onToggleIdType={toggleIdType}
                     onResetView={() => visualizerRef.current?.resetView()}
+                    availableGroups={availableGroups}
+                    activeGroupId={activeGroupId}
+                    onSelectGroup={setActiveGroupId}
                     lang={config.language}
                 />
             </div>
@@ -127,6 +145,9 @@ function App() {
                     highlightedShapeId={selectedShapeId}
                     onSelectShape={toggleSelection}
                     onClose={() => setIsObjectListOpen(false)}
+                    activeGroupId={activeGroupId}
+                    availableGroups={availableGroups}
+                    onSelectGroup={setActiveGroupId}
                     lang={config.language}
                 />
             )}
