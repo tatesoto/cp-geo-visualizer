@@ -21,6 +21,7 @@ function App() {
   const [config, setConfig] = useState<AppConfig>({
       executionTimeout: 3000,
       renderTimeout: 200,
+      language: 'en'
   });
 
   // UI State
@@ -84,6 +85,7 @@ function App() {
         isObjectListOpen={isObjectListOpen} 
         setIsObjectListOpen={setIsObjectListOpen}
         onOpenSettings={() => setIsSettingsOpen(true)} 
+        lang={config.language}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -102,6 +104,7 @@ function App() {
             onParse={handleParse}
             error={error}
             isParsing={isParsing}
+            lang={config.language}
         />
 
         {/* Right Panel: Visualization & Object List */}
@@ -113,12 +116,14 @@ function App() {
                     highlightedShapeId={selectedShapeId}
                     visibleIdTypes={visibleIdTypes}
                     renderTimeout={config.renderTimeout}
+                    lang={config.language}
                 />
                 
                 <VisualizerControls 
                     visibleIdTypes={visibleIdTypes}
                     onToggleIdType={toggleIdType}
                     onResetView={() => visualizerRef.current?.resetView()}
+                    lang={config.language}
                 />
             </div>
             
@@ -129,6 +134,7 @@ function App() {
                     highlightedShapeId={selectedShapeId}
                     onSelectShape={toggleSelection}
                     onClose={() => setIsObjectListOpen(false)}
+                    lang={config.language}
                 />
             )}
         </div>

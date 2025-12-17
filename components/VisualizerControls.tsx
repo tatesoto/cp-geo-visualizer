@@ -1,46 +1,49 @@
 import React from 'react';
 import { ArrowsPointingInIcon, TagIcon } from '@heroicons/react/24/outline';
-import { ShapeType } from '../types';
+import { ShapeType, Language } from '../types';
+import { t } from '../constants/translations';
 
 interface VisualizerControlsProps {
   visibleIdTypes: ShapeType[];
   onToggleIdType: (type: ShapeType) => void;
   onResetView: () => void;
+  lang: Language;
 }
-
-const ID_TOGGLE_OPTIONS = [
-    { 
-        type: ShapeType.POINT, 
-        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" /></svg>,
-        label: "Points"
-    },
-    { 
-        type: ShapeType.SEGMENT, 
-        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="4" y1="20" x2="20" y2="4" /></svg>,
-        label: "Segments"
-    },
-    { 
-        type: ShapeType.LINE, 
-        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><line x1="2" y1="22" x2="22" y2="2" /></svg>,
-        label: "Lines"
-    },
-    { 
-        type: ShapeType.CIRCLE, 
-        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="7" /></svg>,
-        label: "Circles"
-    },
-    { 
-        type: ShapeType.POLYGON, 
-        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 4L4 20L20 20L12 4Z" /></svg>,
-        label: "Poly"
-    }
-];
 
 const VisualizerControls: React.FC<VisualizerControlsProps> = ({ 
   visibleIdTypes, 
   onToggleIdType, 
-  onResetView 
+  onResetView,
+  lang
 }) => {
+  const ID_TOGGLE_OPTIONS = [
+    { 
+        type: ShapeType.POINT, 
+        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" /></svg>,
+        label: t(lang, 'points')
+    },
+    { 
+        type: ShapeType.SEGMENT, 
+        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="4" y1="20" x2="20" y2="4" /></svg>,
+        label: t(lang, 'segments')
+    },
+    { 
+        type: ShapeType.LINE, 
+        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><line x1="2" y1="22" x2="22" y2="2" /></svg>,
+        label: t(lang, 'lines')
+    },
+    { 
+        type: ShapeType.CIRCLE, 
+        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="7" /></svg>,
+        label: t(lang, 'circles')
+    },
+    { 
+        type: ShapeType.POLYGON, 
+        icon: <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 4L4 20L20 20L12 4Z" /></svg>,
+        label: t(lang, 'polygons')
+    }
+  ];
+
   return (
     <div className="absolute top-6 right-6 flex flex-col gap-3 pointer-events-none z-10">
          {/* Floating Island Container */}
@@ -72,7 +75,7 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
              <button 
                onClick={onResetView}
                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-black hover:bg-gray-50 transition-all"
-               title="Fit to Screen"
+               title={t(lang, 'fitToScreen')}
               >
                <ArrowsPointingInIcon className="w-4 h-4" />
              </button>

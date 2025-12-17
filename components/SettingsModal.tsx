@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { AppConfig } from '../types';
+import { AppConfig, Language } from '../types';
+import { t } from '../constants/translations';
 
 interface SettingsModalProps {
   config: AppConfig;
@@ -11,15 +12,20 @@ interface SettingsModalProps {
 const SettingsModal: React.FC<SettingsModalProps> = ({ config, onSave, onClose }) => {
   const [localConfig, setLocalConfig] = useState<AppConfig>(config);
 
-  const handleChange = (key: keyof AppConfig, value: string) => {
-    const numValue = parseInt(value, 10);
-    if (!isNaN(numValue)) {
-      setLocalConfig(prev => ({ ...prev, [key]: numValue }));
+  const handleChange = (key: keyof AppConfig, value: string | number) => {
+    if (key === 'language') {
+        setLocalConfig(prev => ({ ...prev, language: value as Language }));
+    } else {
+        const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
+        if (!isNaN(numValue)) {
+            setLocalConfig(prev => ({ ...prev, [key]: numValue }));
+        }
     }
   };
 
   const isHighExecution = localConfig.executionTimeout > 5000;
   const isHighRender = localConfig.renderTimeout > 500;
+  const lang = localConfig.language;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
@@ -27,7 +33,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ config, onSave, onClose }
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-          <h2 className="text-sm font-semibold text-gray-900">Settings</h2>
+          <h2 className="text-sm font-semibold text-gray-900">{t(lang, 'settings')}</h2>
           <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-900 transition-colors p-1 rounded-md hover:bg-gray-100"
@@ -39,10 +45,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ config, onSave, onClose }
         {/* Body */}
         <div className="p-6 space-y-6">
           
+          {/* Language */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-gray-700 block">
+              {t(lang, 'language')}
+            </label>
+            <select
+                value={localConfig.language}
+                onChange={(e) => handleChange('language', e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all appearance-none cursor-pointer"
+            >
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+            </select>
+          </div>
+
+          <hr className="border-gray-100" />
+
           {/* Execution Timeout */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-700 flex justify-between">
-              <span>Script Execution Timeout (ms)</span>
+              <span>{t(lang, 'executionTimeout')}</span>
               <span className="text-gray-400 font-normal">Default: 3000</span>
             </label>
             <input 
@@ -52,12 +75,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ config, onSave, onClose }
               className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
             />
             <p className="text-[10px] text-gray-500">
-              Max time allowed for the parser to process the input script. 
+              {t(lang, 'executionTimeoutDesc')}
             </p>
             {isHighExecution && (
                <div className="flex items-start gap-2 text-amber-600 text-[11px] bg-amber-50 p-2 rounded border border-amber-100">
                   <ExclamationTriangleIcon className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>High values (5000ms+) may cause the browser to freeze completely during parsing loops.</span>
+                  <span>{t(lang, 'executionTimeoutWarn')}</span>
                </div>
             )}
           </div>
@@ -65,7 +88,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ config, onSave, onClose }
           {/* Render Timeout */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-700 flex justify-between">
-              <span>Render Frame Timeout (ms)</span>
+              <span>{t(lang, 'renderTimeout')}</span>
               <span className="text-gray-400 font-normal">Default: 200</span>
             </label>
             <input 
@@ -75,12 +98,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ config, onSave, onClose }
               className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
             />
             <p className="text-[10px] text-gray-500">
-              Max time allowed to draw a single frame. Lower this if UI becomes unresponsive with many objects.
+              {t(lang, 'renderTimeoutDesc')}
             </p>
             {isHighRender && (
                <div className="flex items-start gap-2 text-amber-600 text-[11px] bg-amber-50 p-2 rounded border border-amber-100">
                   <ExclamationTriangleIcon className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>High values (500ms+) will cause noticeable lag when panning or zooming.</span>
+                  <span>{t(lang, 'renderTimeoutWarn')}</span>
                </div>
             )}
           </div>
@@ -93,13 +116,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ config, onSave, onClose }
             onClick={onClose}
             className="px-4 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            {t(lang, 'cancel')}
           </button>
           <button 
             onClick={() => { onSave(localConfig); onClose(); }}
             className="px-4 py-2 text-xs font-medium text-white bg-black rounded-lg shadow-sm hover:bg-gray-800 transition-colors"
           >
-            Save Changes
+            {t(lang, 'saveChanges')}
           </button>
         </div>
 

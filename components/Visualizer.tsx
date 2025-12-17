@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useLayoutEffect, forwardRef, useImperativeHandle } from 'react';
-import { Shape, ShapeType, Viewport } from '../types';
+import { Shape, ShapeType, Viewport, Language } from '../types';
 import { getBoundingBox, worldToScreen, screenToWorld } from '../services/geometry';
+import { t } from '../constants/translations';
 
 export interface VisualizerHandle {
   resetView: () => void;
@@ -11,13 +12,15 @@ interface VisualizerProps {
   highlightedShapeId?: string | null;
   visibleIdTypes?: ShapeType[];
   renderTimeout?: number;
+  lang: Language;
 }
 
 const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({ 
     shapes, 
     highlightedShapeId, 
     visibleIdTypes = [], 
-    renderTimeout = 200 
+    renderTimeout = 200,
+    lang
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -429,12 +432,12 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     if (isTimedOut) {
         ctx.save();
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.fillRect(0, height - 30, 260, 30);
+        ctx.fillRect(0, height - 30, 360, 30);
         ctx.fillStyle = '#ef4444';
         ctx.font = 'bold 12px "Inter", sans-serif';
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'left';
-        ctx.fillText('⚠ Rendering timed out. Showing partial results.', 10, height - 15);
+        ctx.fillText(t(lang, 'renderingTimeout'), 10, height - 15);
         ctx.restore();
     }
 
@@ -445,7 +448,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
         }
     }
 
-  }, []);
+  }, [lang]);
 
   const isDraggingRef = useRef(false);
   const lastMousePosRef = useRef({ x: 0, y: 0 });
@@ -563,11 +566,11 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
       <div className="absolute bottom-5 right-5 bg-white/90 backdrop-blur border border-gray-100 shadow-sm rounded-lg px-3 py-2 text-[10px] text-gray-500 font-mono flex gap-4 pointer-events-none">
         <span className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-            {shapes.length} Objects
+            {shapes.length} {t(lang, 'objects')}
         </span>
         <span className="opacity-50">|</span>
-        <span>Scroll to Zoom</span>
-        <span>Drag to Pan</span>
+        <span>{t(lang, 'scrollToZoom')}</span>
+        <span>{t(lang, 'dragToPan')}</span>
       </div>
 
       {/* Hover Tooltip */}

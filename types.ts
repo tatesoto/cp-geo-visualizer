@@ -65,7 +65,10 @@ export interface ParseResult {
   error: string | null;
 }
 
+export type Language = 'en' | 'ja';
+
 export interface AppConfig {
   executionTimeout: number;
   renderTimeout: number;
+  language: Language;
 }

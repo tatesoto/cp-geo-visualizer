@@ -1,12 +1,14 @@
 import React, { useMemo, useState, useRef } from 'react';
-import { Shape, ShapeType } from '../types';
+import { Shape, ShapeType, Language } from '../types';
 import { ChevronRightIcon, ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { t } from '../constants/translations';
 
 interface ObjectListProps {
   shapes: Shape[];
   highlightedShapeId: string | null;
   onSelectShape: (id: string | null) => void;
   onClose: () => void;
+  lang: Language;
 }
 
 const VirtualSection = ({ 
@@ -77,7 +79,7 @@ const VirtualSection = ({
     );
 };
 
-const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onSelectShape, onClose }) => {
+const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onSelectShape, onClose, lang }) => {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     [ShapeType.POINT]: true,
     [ShapeType.SEGMENT]: true,
@@ -114,13 +116,13 @@ const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onS
 
   const getTypeLabel = (type: ShapeType) => {
     switch (type) {
-        case ShapeType.POINT: return 'Points';
-        case ShapeType.LINE: return 'Lines';
-        case ShapeType.SEGMENT: return 'Segments';
-        case ShapeType.CIRCLE: return 'Circles';
-        case ShapeType.POLYGON: return 'Polygons';
-        case ShapeType.TEXT: return 'Annotations';
-        default: return 'Other';
+        case ShapeType.POINT: return t(lang, 'points');
+        case ShapeType.LINE: return t(lang, 'lines');
+        case ShapeType.SEGMENT: return t(lang, 'segments');
+        case ShapeType.CIRCLE: return t(lang, 'circles');
+        case ShapeType.POLYGON: return t(lang, 'polygons');
+        case ShapeType.TEXT: return t(lang, 'annotations');
+        default: return t(lang, 'other');
     }
   };
 
@@ -136,7 +138,7 @@ const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onS
   return (
     <div className="w-[320px] bg-white border-l border-gray-200 flex flex-col h-full shadow-2xl z-30">
       <div className="h-12 bg-white border-b border-gray-100 flex items-center justify-between px-4 shrink-0">
-        <span className="text-xs font-semibold text-gray-900 tracking-tight">Inspector</span>
+        <span className="text-xs font-semibold text-gray-900 tracking-tight">{t(lang, 'inspector')}</span>
         <div className="flex items-center gap-3">
             <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{shapes.length} items</span>
             <button 
@@ -151,7 +153,7 @@ const ObjectList: React.FC<ObjectListProps> = ({ shapes, highlightedShapeId, onS
       <div className="flex-1 overflow-y-auto bg-gray-50/50 p-2 space-y-2">
         {shapes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-             <span className="text-sm">No objects found</span>
+             <span className="text-sm">{t(lang, 'noObjects')}</span>
           </div>
         ) : (
           typeOrder.map((type) => {
