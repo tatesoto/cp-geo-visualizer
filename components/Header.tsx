@@ -139,12 +139,12 @@ const Header: React.FC<HeaderProps> = ({
           <span className="hidden sm:inline whitespace-nowrap">{t(lang, 'settings')}</span>
         </button>
 
-        <div className="h-4 w-px bg-slate-200 mx-1"></div>
+        <div className={`h-4 w-px bg-slate-200 mx-1 ${visualizerOnlyClass}`}></div>
 
         {/* Object List Toggle */}
         <button
           onClick={() => setIsObjectListOpen(!isObjectListOpen)}
-          className={`flex items-center justify-center gap-1.5 px-0 sm:px-2.5 py-1 rounded-md text-xs font-medium border transition-all w-8 sm:w-auto sm:min-w-[110px] ${isObjectListOpen
+          className={`${visualizerOnlyClass} items-center justify-center gap-1.5 px-0 sm:px-2.5 py-1 rounded-md text-xs font-medium border transition-all w-8 sm:w-auto sm:min-w-[110px] ${isObjectListOpen
             ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm'
             : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
             }`}
@@ -155,7 +155,7 @@ const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* Share Dropdown */}
-        <div className="relative ml-0.5" ref={shareMenuRef}>
+        <div className={`relative ml-0.5 ${visualizerOnlyClass}`} ref={shareMenuRef}>
           <button
             onClick={handleShareClick}
             className={`
