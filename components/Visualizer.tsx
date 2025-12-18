@@ -362,6 +362,101 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     isDraggingRef.current = false;
   };
 
+  // --- Touch Events ---
+  const lastPinchDistanceRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const getDistance = (t1: Touch, t2: Touch) => {
+      return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+    };
+
+    const getCenter = (t1: Touch, t2: Touch) => {
+      return {
+        x: (t1.clientX + t2.clientX) / 2,
+        y: (t1.clientY + t2.clientY) / 2
+      };
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        isDraggingRef.current = true;
+        lastMousePosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        // Optional: simulate hover for single touch?
+      } else if (e.touches.length === 2) {
+        isDraggingRef.current = false; // Disable drag during pinch
+        lastPinchDistanceRef.current = getDistance(e.touches[0], e.touches[1]);
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const container = containerRef.current;
+      if (!container) return;
+
+      if (e.touches.length === 1 && isDraggingRef.current) {
+        const touch = e.touches[0];
+        const dx = touch.clientX - lastMousePosRef.current.x;
+        const dy = touch.clientY - lastMousePosRef.current.y;
+
+        const viewport = viewportRef.current;
+        viewportRef.current = {
+          ...viewport,
+          centerX: viewport.centerX - dx / viewport.scale,
+          centerY: viewport.centerY - dy / -viewport.scale
+        };
+        lastMousePosRef.current = { x: touch.clientX, y: touch.clientY };
+        requestRender();
+      } else if (e.touches.length === 2) {
+        const dist = getDistance(e.touches[0], e.touches[1]);
+        if (lastPinchDistanceRef.current && dist > 0) {
+          const rect = container.getBoundingClientRect();
+          const center = getCenter(e.touches[0], e.touches[1]);
+
+          // Canvas relative coordinates
+          const mouseX = center.x - rect.left;
+          const mouseY = center.y - rect.top;
+
+          const viewport = viewportRef.current;
+          const worldMouse = screenToWorld(mouseX, mouseY, viewport, rect.width, rect.height);
+
+          const zoomFactor = dist / lastPinchDistanceRef.current;
+          const newScale = viewport.scale * zoomFactor;
+
+          const newCenterX = worldMouse.x - (mouseX - rect.width / 2) / newScale;
+          const newCenterY = worldMouse.y - (mouseY - rect.height / 2) / -newScale;
+
+          viewportRef.current = { ...viewport, scale: newScale, centerX: newCenterX, centerY: newCenterY };
+          lastPinchDistanceRef.current = dist;
+          requestRender();
+        }
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length < 2) {
+        lastPinchDistanceRef.current = null;
+      }
+      if (e.touches.length === 0) {
+        isDraggingRef.current = false;
+      }
+    };
+
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('touchstart', handleTouchStart);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
   return (
     <div
       ref={containerRef}
