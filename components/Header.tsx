@@ -68,13 +68,16 @@ const Header: React.FC<HeaderProps> = ({
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({
               files: [file],
+              // title is often used, text sometimes conflicts with files on some implementations
               title: 'CP Visualization',
-              text: 'Check out this geometry visualization!'
+              text: t(lang, 'shareText'),
             });
             return;
           }
         }
       } catch (error) {
+        // If user cancelled sharing, don't open the dropdown
+        if (error instanceof Error && error.name === 'AbortError') return;
         console.error('Error sharing:', error);
       }
     }
