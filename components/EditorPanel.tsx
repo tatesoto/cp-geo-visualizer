@@ -181,6 +181,24 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
         }, 0);
     };
 
+    const handleManualIndent = () => {
+        if (!formatInputRef.current) return;
+
+        const target = formatInputRef.current;
+        const { selectionStart, selectionEnd, value } = target;
+
+        const newValue = value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd);
+        setFormatText(newValue);
+
+        setTimeout(() => {
+            if (formatInputRef.current) {
+                formatInputRef.current.selectionStart = selectionStart + 1;
+                formatInputRef.current.selectionEnd = selectionStart + 1;
+                formatInputRef.current.focus();
+            }
+        }, 0);
+    };
+
     const handleFormatChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const val = e.target.value;
         setFormatText(val);
@@ -349,6 +367,18 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                         </div>
 
                         <div className="flex items-center gap-3">
+                            {isMobile && (
+                                <button
+                                    onMouseDown={(e) => {
+                                        e.preventDefault(); // Prevent losing focus from textarea if possible, or handle focus logic
+                                        handleManualIndent();
+                                    }}
+                                    className="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-bold rounded uppercase border border-gray-200 transition-colors"
+                                    title="Insert Tab"
+                                >
+                                    Tab
+                                </button>
+                            )}
                             <select
                                 className="bg-transparent text-xs text-gray-500 hover:text-gray-900 border-none outline-none cursor-pointer pr-1 transition-colors text-right appearance-none"
                                 onChange={(e) => loadSnippet(e.target.value)}
