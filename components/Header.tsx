@@ -12,6 +12,7 @@ interface HeaderProps {
   onShareBlob?: () => Promise<{ blob: Blob | null, filename: string } | null>;
   onToggleLanguage: () => void;
   lang: Language;
+  activeMobileTab: 'editor' | 'visualizer';
 }
 
 const USFlag = () => (
@@ -38,7 +39,8 @@ const Header: React.FC<HeaderProps> = ({
   onSaveImage,
   onShareBlob,
   onToggleLanguage,
-  lang
+  lang,
+  activeMobileTab
 }) => {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
@@ -85,6 +87,8 @@ const Header: React.FC<HeaderProps> = ({
     // Fallback or Desktop: Open dropdown
     setIsShareOpen(!isShareOpen);
   };
+
+  const visualizerOnlyClass = activeMobileTab === 'editor' ? 'hidden md:flex' : 'flex';
 
   return (
     <header className="h-12 border-b border-slate-200 flex items-center justify-between px-4 bg-white/90 backdrop-blur-md z-40 sticky top-0 supports-[backdrop-filter]:bg-white/60">

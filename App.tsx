@@ -91,7 +91,7 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-gray-50 text-gray-900 font-sans fixed inset-0 overflow-hidden">
+    <div className="flex flex-col h-screen supports-[height:100svh]:h-[100svh] bg-gray-50 text-gray-900 font-sans fixed inset-0 overflow-hidden">
       <Header
         isObjectListOpen={isObjectListOpen}
         setIsObjectListOpen={setIsObjectListOpen}
@@ -101,6 +101,7 @@ function App() {
         onShareBlob={generateImageBlob}
         onToggleLanguage={toggleLanguage}
         lang={config.language}
+        activeMobileTab={activeMobileTab}
       />
 
       <div className="flex-1 flex overflow-hidden relative">
