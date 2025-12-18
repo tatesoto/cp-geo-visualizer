@@ -91,7 +91,7 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 text-gray-900 font-sans fixed inset-0 overflow-hidden">
+    <div className="flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-gray-50 text-gray-900 font-sans fixed inset-0 overflow-hidden">
       <Header
         isObjectListOpen={isObjectListOpen}
         setIsObjectListOpen={setIsObjectListOpen}
@@ -176,7 +176,7 @@ function App() {
       </div>
 
       {/* Mobile Tab Bar */}
-      <div className="md:hidden h-14 bg-white border-t border-gray-200 flex items-center justify-around shrink-0 z-50 pb-safe">
+      <div className="md:hidden h-14 bg-white border-t border-gray-200 flex items-center justify-around shrink-0 z-50 pb-[env(safe-area-inset-bottom)]">
         <button
           onClick={() => setActiveMobileTab('editor')}
           className={`flex flex-col items-center justify-center w-full h-full ${activeMobileTab === 'editor' ? 'text-indigo-600' : 'text-gray-400'}`}
