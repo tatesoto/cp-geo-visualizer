@@ -67,7 +67,7 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
                                     className="bg-transparent text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-lg pl-2 pr-6 py-1 border border-transparent hover:border-gray-200 outline-none appearance-none cursor-pointer h-7 min-w-[60px] transition-colors"
                                 >
                                     <option value="">{t(lang, 'group_all')}</option>
-                                    <hr />
+                                    {availableGroups.length > 0 && <option disabled>──────────</option>}
                                     {availableGroups.map(g => (
                                         <option key={g} value={g}>{g}</option>
                                     ))}

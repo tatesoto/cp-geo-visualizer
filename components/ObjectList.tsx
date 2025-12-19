@@ -162,12 +162,11 @@ const ObjectList: React.FC<ObjectListProps> = ({
     <>
 
 
-      {/* List Container - Bottom Sheet on Mobile, Sidebar on Desktop */}
+      {/* List Container - Flow Below on Mobile, Sidebar on Desktop */}
       <div className={`
-            fixed inset-x-0 bottom-0 w-full h-[45vh] z-50 shadow-[0_-4px_30px_rgba(0,0,0,0.15)] rounded-t-2xl
+            w-full h-[40vh] border-t border-gray-200 shrink-0 relative z-10
             bg-white flex flex-col
-            md:static md:w-[320px] md:h-full md:inset-auto md:shadow-2xl md:rounded-none md:border-l md:border-gray-200 md:z-30
-            transition-transform duration-300 ease-in-out transform
+            md:w-[320px] md:h-full md:border-t-0 md:border-l md:border-gray-200 md:shadow-2xl md:z-30
         `}>
         <div className="h-12 bg-white border-b border-gray-100 flex items-center justify-between px-4 shrink-0 gap-2">
           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -183,7 +182,7 @@ const ObjectList: React.FC<ObjectListProps> = ({
                     className="w-full bg-gray-50 text-[11px] font-medium text-gray-700 hover:bg-gray-100 rounded-md py-1 pl-2 pr-5 border border-gray-200 outline-none appearance-none cursor-pointer transition-colors truncate"
                   >
                     <option value="">{t(lang, 'group_all')}</option>
-                    {availableGroups.length > 0 && <hr />}
+                    {availableGroups.length > 0 && <option disabled>──────────</option>}
                     {availableGroups.map(g => (
                       <option key={g} value={g}>{g}</option>
                     ))}
