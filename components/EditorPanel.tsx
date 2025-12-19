@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { ChevronDownIcon, ChevronRightIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronRightIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, ArrowsPointingOutIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { SNIPPETS, SnippetKey } from '../constants/snippets';
 import { Language } from '../types';
 import { t, TRANSLATIONS } from '../constants/translations';
@@ -199,6 +199,21 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
         }, 0);
     };
 
+    const handleClear = () => {
+        if (window.confirm(t(lang, 'clearConfirm'))) {
+            setFormatText('');
+            if (formatInputRef.current) {
+                formatInputRef.current.focus();
+            }
+        }
+    };
+
+    const handleClearInput = () => {
+        if (window.confirm(t(lang, 'clearConfirm'))) {
+            setInputText('');
+        }
+    };
+
     const handleFormatChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const val = e.target.value;
         setFormatText(val);
@@ -367,6 +382,13 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                         </div>
 
                         <div className="flex items-center gap-3">
+                            <button
+                                onClick={handleClear}
+                                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                title={t(lang, 'clear')}
+                            >
+                                <TrashIcon className="w-4 h-4" />
+                            </button>
                             {isMobile && (
                                 <button
                                     onMouseDown={(e) => {
@@ -438,13 +460,22 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                             {isInputOpen ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
                             <span className="text-xs font-semibold uppercase tracking-wide">{t(lang, 'inputData')}</span>
                         </div>
-                        <label
-                            className="text-xs text-gray-500 hover:text-gray-900 cursor-pointer flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-gray-100"
-                        >
-                            <DocumentTextIcon className="w-3.5 h-3.5" />
-                            <span>{t(lang, 'upload')}</span>
-                            <input type="file" className="hidden" onChange={handleFileUpload} />
-                        </label>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={handleClearInput}
+                                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                title={t(lang, 'clear')}
+                            >
+                                <TrashIcon className="w-4 h-4" />
+                            </button>
+                            <label
+                                className="text-xs text-gray-500 hover:text-gray-900 cursor-pointer flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-gray-100"
+                            >
+                                <DocumentTextIcon className="w-3.5 h-3.5" />
+                                <span>{t(lang, 'upload')}</span>
+                                <input type="file" className="hidden" onChange={handleFileUpload} />
+                            </label>
+                        </div>
                     </div>
 
                     <div className="flex-1 relative bg-white">
