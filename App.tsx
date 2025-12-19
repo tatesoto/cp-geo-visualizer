@@ -135,10 +135,10 @@ function App() {
 
         {/* Right Panel: Visualization & Object List */}
         <div className={`
-            ${activeMobileTab === 'visualizer' ? 'flex' : 'hidden'}
-            md:flex flex-1 overflow-hidden bg-white relative
+            ${activeMobileTab === 'visualizer' ? 'flex flex-col' : 'hidden'}
+            md:flex md:flex-row flex-1 overflow-hidden bg-white relative
         `}>
-          <div className="flex-1 relative min-w-0">
+          <div className="flex-1 relative min-w-0 min-h-0">
             <Visualizer
               ref={visualizerRef}
               shapes={parsedShapes}
