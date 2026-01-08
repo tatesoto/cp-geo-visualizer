@@ -2,6 +2,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Shape, ShapeType, Language } from '../types';
 import { ChevronRightIcon, ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { t } from '../constants/translations';
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from './ui/select';
 
 interface ObjectListProps {
   shapes: Shape[];
@@ -97,6 +98,7 @@ const ObjectList: React.FC<ObjectListProps> = ({
   onSelectGroup,
   lang
 }) => {
+  const ALL_GROUP_VALUE = '__all__';
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     [ShapeType.POINT]: true,
     [ShapeType.SEGMENT]: true,
@@ -220,21 +222,24 @@ const ObjectList: React.FC<ObjectListProps> = ({
               {availableGroups.length > 0 && (
                 <>
                   <div className="h-4 w-px bg-gray-200"></div>
-                  <div className="relative flex-1 min-w-0 max-w-[140px]">
-                    <select
-                      value={activeGroupId || ''}
-                      onChange={(e) => onSelectGroup(e.target.value || null)}
-                      className="w-full bg-gray-50 text-[11px] font-medium text-gray-700 hover:bg-gray-100 rounded-md py-1 pl-2 pr-5 border border-gray-200 outline-none appearance-none cursor-pointer transition-colors truncate"
+                  <div className="flex-1 min-w-0 max-w-[140px]">
+                    <Select
+                      value={activeGroupId ?? ALL_GROUP_VALUE}
+                      onValueChange={(value) => onSelectGroup(value === ALL_GROUP_VALUE ? null : value)}
                     >
-                      <option value="">{t(lang, 'group_all')}</option>
-                      {availableGroups.length > 0 && <option disabled>──────────</option>}
-                      {availableGroups.map(g => (
-                        <option key={g} value={g}>{g}</option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2">
-                      <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                    </div>
+                      <SelectTrigger className="h-6 w-full bg-gray-50 text-[11px] text-gray-700 font-medium hover:bg-gray-100 border-gray-200 shadow-none">
+                        <SelectValue className="data-[placeholder]:text-gray-400" placeholder={t(lang, 'group_all')} />
+                      </SelectTrigger>
+                      <SelectContent align="start">
+                        <SelectItem value={ALL_GROUP_VALUE}>{t(lang, 'group_all')}</SelectItem>
+                        {availableGroups.length > 0 && <SelectSeparator />}
+                        {availableGroups.map((g) => (
+                          <SelectItem key={g} value={g}>
+                            {g}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </>
               )}

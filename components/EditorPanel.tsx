@@ -4,6 +4,7 @@ import { SNIPPETS, SnippetKey } from '../constants/snippets';
 import { Language } from '../types';
 import { t, TRANSLATIONS } from '../constants/translations';
 import { getCaretCoordinates } from '../utils/caret';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface EditorPanelProps {
     isOpen: boolean;
@@ -50,6 +51,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
     const [isFormatOpen, setIsFormatOpen] = useState(true);
     const [isInputOpen, setIsInputOpen] = useState(true);
     const formatInputRef = useRef<HTMLTextAreaElement>(null);
+    const [snippetSelectKey, setSnippetSelectKey] = useState(0);
 
     // Resize State
     const [width, setWidth] = useState(400);
@@ -384,8 +386,9 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                         <div className="flex items-center gap-3">
                             {isMobile && (
                                 <button
-                                    onMouseDown={(e) => {
-                                        e.preventDefault(); // Prevent losing focus from textarea if possible, or handle focus logic
+                                    type="button"
+                                    onPointerDown={(e) => {
+                                        e.preventDefault(); // Keep textarea focus so the keyboard stays open on mobile
                                         handleManualIndent();
                                     }}
                                     className="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-bold rounded uppercase border border-gray-200 transition-colors"
@@ -402,24 +405,30 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                                 >
                                     <TrashIcon className="w-4 h-4" />
                                 </button>
-                                <div className="relative rounded px-1.5 py-0.5 hover:bg-gray-100 transition-colors">
-                                    <RectangleStackIcon className="w-3.5 h-3.5 text-gray-400 pointer-events-none absolute left-1 top-1/2 -translate-y-1/2" />
-                                    <select
-                                        className={`bg-transparent text-xs text-gray-500 hover:text-gray-900 border-none outline-none cursor-pointer pr-1 pl-4 transition-colors appearance-none truncate ${lang === 'ja'
-                                            ? 'w-[130px]'
-                                            : 'w-[110px]'
-                                            }`}
-                                        onChange={(e) => loadSnippet(e.target.value)}
-                                        value=""
+                                <Select
+                                    key={snippetSelectKey}
+                                    onValueChange={(value) => {
+                                        loadSnippet(value);
+                                        setSnippetSelectKey((prev) => prev + 1);
+                                    }}
+                                >
+                                    <SelectTrigger
+                                        className={`h-7 ${lang === 'ja' ? 'min-w-[160px]' : 'min-w-[130px]'} max-w-[220px] text-gray-500 hover:text-gray-900`}
+                                        aria-label={t(lang, 'loadSnippet')}
                                     >
-                                        <option value="" disabled>
-                                            {t(lang, 'loadSnippet')}
-                                        </option>
+                                        <RectangleStackIcon className="h-3.5 w-3.5 text-gray-400" />
+                                        <span className="min-w-0 flex-1 truncate">
+                                            <SelectValue className="data-[placeholder]:text-gray-400" placeholder={t(lang, 'loadSnippet')} />
+                                        </span>
+                                    </SelectTrigger>
+                                    <SelectContent align="start">
                                         {Object.entries(SNIPPETS).map(([key, _snip]) => (
-                                            <option key={key} value={key}>{t(lang, `snippet_${key}` as keyof typeof TRANSLATIONS['en'])}</option>
+                                            <SelectItem key={key} value={key}>
+                                                {t(lang, `snippet_${key}` as keyof typeof TRANSLATIONS['en'])}
+                                            </SelectItem>
                                         ))}
-                                    </select>
-                                </div>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     </div>
@@ -447,7 +456,10 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                                     <div
                                         key={s}
                                         className={`px-3 py-1.5 text-xs font-mono cursor-pointer transition-colors flex items-center justify-between ${i === suggestionIndex ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-                                        onClick={() => insertSuggestion(s)}
+                                        onPointerDown={(e) => {
+                                            e.preventDefault();
+                                            insertSuggestion(s);
+                                        }}
                                     >
                                         <span>{s}</span>
                                         {i === suggestionIndex && <span className="text-[10px] opacity-70">Enter</span>}

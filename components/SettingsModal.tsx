@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { AppConfig, Language } from '../types';
 import { t } from '../constants/translations';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface SettingsModalProps {
   config: AppConfig;
@@ -50,14 +51,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ config, onSave, onClose }
             <label className="text-xs font-medium text-gray-700 block">
               {t(lang, 'language')}
             </label>
-            <select
-                value={localConfig.language}
-                onChange={(e) => handleChange('language', e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all appearance-none cursor-pointer"
-            >
-                <option value="en">English</option>
-                <option value="ja">日本語</option>
-            </select>
+            <Select value={localConfig.language} onValueChange={(value) => handleChange('language', value)}>
+              <SelectTrigger className="h-9 w-full text-sm text-gray-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="ja">日本語</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <hr className="border-gray-100" />
