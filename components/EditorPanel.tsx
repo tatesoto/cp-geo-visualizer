@@ -382,13 +382,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <button
-                                onClick={handleClear}
-                                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                title={t(lang, 'clear')}
-                            >
-                                <TrashIcon className="w-4 h-4" />
-                            </button>
                             {isMobile && (
                                 <button
                                     onMouseDown={(e) => {
@@ -401,16 +394,25 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                                     Tab
                                 </button>
                             )}
-                            <select
-                                className="bg-transparent text-xs text-gray-500 hover:text-gray-900 border-none outline-none cursor-pointer pr-1 transition-colors text-right appearance-none"
-                                onChange={(e) => loadSnippet(e.target.value)}
-                                value=""
-                            >
-                                <option value="" disabled>{t(lang, 'loadSnippet')}</option>
-                                {Object.entries(SNIPPETS).map(([key, _snip]) => (
-                                    <option key={key} value={key}>{t(lang, `snippet_${key}` as keyof typeof TRANSLATIONS['en'])}</option>
-                                ))}
-                            </select>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleClear}
+                                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                    title={t(lang, 'clear')}
+                                >
+                                    <TrashIcon className="w-4 h-4" />
+                                </button>
+                                <select
+                                    className="bg-transparent text-xs text-gray-500 hover:text-gray-900 border-none outline-none cursor-pointer pr-1 transition-colors text-right appearance-none"
+                                    onChange={(e) => loadSnippet(e.target.value)}
+                                    value=""
+                                >
+                                    <option value="" disabled>{t(lang, 'loadSnippet')}</option>
+                                    {Object.entries(SNIPPETS).map(([key, _snip]) => (
+                                        <option key={key} value={key}>{t(lang, `snippet_${key}` as keyof typeof TRANSLATIONS['en'])}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     </div>
 
