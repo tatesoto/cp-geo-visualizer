@@ -41,6 +41,7 @@ function App() {
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [visibleIdTypes, setVisibleIdTypes] = useState<ShapeType[]>([]);
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [areControlsVisible, setAreControlsVisible] = useState(true);
 
   // Mobile Tab State
   const [activeMobileTab, setActiveMobileTab] = useState<'editor' | 'visualizer'>('editor');
@@ -93,15 +94,10 @@ function App() {
   return (
     <div className="flex flex-col h-screen supports-[height:100svh]:h-[100svh] bg-gray-50 text-gray-900 font-sans fixed inset-0 overflow-hidden">
       <Header
-        isObjectListOpen={isObjectListOpen}
-        setIsObjectListOpen={setIsObjectListOpen}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenReference={() => setIsReferenceOpen(true)}
-        onSaveImage={handleSaveImage}
-        onShareBlob={generateImageBlob}
         onToggleLanguage={toggleLanguage}
         lang={config.language}
-        activeMobileTab={activeMobileTab}
       />
 
       <div className="flex-1 flex overflow-hidden relative">
@@ -156,6 +152,12 @@ function App() {
               availableGroups={availableGroups}
               activeGroupId={activeGroupId}
               onSelectGroup={setActiveGroupId}
+              isObjectListOpen={isObjectListOpen}
+              onToggleObjectList={() => setIsObjectListOpen(!isObjectListOpen)}
+              onSaveImage={handleSaveImage}
+              onShareBlob={generateImageBlob}
+              isVisible={areControlsVisible}
+              onToggleVisible={() => setAreControlsVisible(prev => !prev)}
               lang={config.language}
             />
           </div>

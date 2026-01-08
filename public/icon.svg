@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="CP Geometry Visualizer icon">
+  <rect width="512" height="512" fill="#f8fafc"/>
+
+  <!-- Bold axes for small sizes -->
+  <g stroke="#475569" stroke-width="8" stroke-linecap="round">
+    <line x1="64" y1="320" x2="448" y2="320"/>
+    <line x1="200" y1="448" x2="200" y2="80"/>
+    <!-- Arrowheads -->
+    <line x1="448" y1="320" x2="428" y2="310"/>
+    <line x1="448" y1="320" x2="428" y2="330"/>
+    <line x1="200" y1="80" x2="190" y2="100"/>
+    <line x1="200" y1="80" x2="210" y2="100"/>
+  </g>
+
+  <!-- Simple colorful shapes -->
+  <g fill="none" stroke-width="7" opacity="0.95">
+    <circle cx="320" cy="190" r="70" stroke="#0ea5e9"/>
+    <polygon points="120,360 210,440 260,320" stroke="#ec4899"/>
+    <line x1="280" y1="380" x2="420" y2="400" stroke="#f59e0b"/>
+  </g>
+
+  <!-- Points: segment endpoints + triangle vertices only -->
+  <g fill="#f59e0b">
+    <circle cx="280" cy="380" r="10"/>
+    <circle cx="420" cy="400" r="10"/>
+  </g>
+  <g fill="#ec4899">
+    <circle cx="120" cy="360" r="10"/>
+    <circle cx="210" cy="440" r="10"/>
+    <circle cx="260" cy="320" r="10"/>
+  </g>
+</svg>

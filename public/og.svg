@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="CP Geometry Visualizer preview">
+  <defs>
+    <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M80 0H0V80" fill="none" stroke="#e2e8f0" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="#f8fafc"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- Axes -->
+  <g stroke="#64748b" stroke-width="4" stroke-linecap="round">
+    <line x1="40" y1="380" x2="1040" y2="380"/>
+    <line x1="280" y1="520" x2="280" y2="140"/>
+    <!-- Arrowheads -->
+    <line x1="1040" y1="380" x2="1024" y2="372"/>
+    <line x1="1040" y1="380" x2="1024" y2="388"/>
+    <line x1="280" y1="140" x2="272" y2="156"/>
+    <line x1="280" y1="140" x2="288" y2="156"/>
+  </g>
+  <!-- Ticks -->
+  <g stroke="#94a3b8" stroke-width="2" stroke-linecap="round">
+    <line x1="40" y1="372" x2="40" y2="388"/>
+    <line x1="120" y1="372" x2="120" y2="388"/>
+    <line x1="200" y1="372" x2="200" y2="388"/>
+    <line x1="280" y1="372" x2="280" y2="388"/>
+    <line x1="360" y1="372" x2="360" y2="388"/>
+    <line x1="440" y1="372" x2="440" y2="388"/>
+    <line x1="520" y1="372" x2="520" y2="388"/>
+    <line x1="600" y1="372" x2="600" y2="388"/>
+    <line x1="680" y1="372" x2="680" y2="388"/>
+    <line x1="760" y1="372" x2="760" y2="388"/>
+    <line x1="840" y1="372" x2="840" y2="388"/>
+    <line x1="920" y1="372" x2="920" y2="388"/>
+
+    <line x1="272" y1="300" x2="288" y2="300"/>
+    <line x1="272" y1="380" x2="288" y2="380"/>
+    <line x1="272" y1="460" x2="288" y2="460"/>
+  </g>
+
+  <!-- Geometry shapes -->
+  <g fill="none" stroke-width="3" opacity="0.9">
+    <circle cx="430" cy="250" r="60" stroke="#0ea5e9"/>
+    <circle cx="520" cy="360" r="40" stroke="#10b981"/>
+    <polygon points="160,470 260,540 340,440" stroke="#ec4899"/>
+    <polygon points="760,190 980,240 920,420 720,360" stroke="#8b5cf6"/>
+    <line x1="620" y1="470" x2="900" y2="500" stroke="#f59e0b"/>
+  </g>
+
+  <!-- Points only on segment endpoints and polygon vertices -->
+  <g fill="#f59e0b">
+    <circle cx="620" cy="470" r="5"/>
+    <circle cx="900" cy="500" r="5"/>
+  </g>
+  <g fill="#ec4899">
+    <circle cx="160" cy="470" r="5"/>
+    <circle cx="260" cy="540" r="5"/>
+    <circle cx="340" cy="440" r="5"/>
+  </g>
+  <g fill="#8b5cf6">
+    <circle cx="760" cy="190" r="5"/>
+    <circle cx="980" cy="240" r="5"/>
+    <circle cx="920" cy="420" r="5"/>
+    <circle cx="720" cy="360" r="5"/>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="170" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="48" font-weight="700" fill="#0f172a">CP GEOMETRY</text>
+  <text x="600" y="230" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="56" font-weight="700" fill="#0f172a">VISUALIZER</text>
+</svg>

@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowsPointingOutIcon, ListBulletIcon, ShareIcon, ArrowDownTrayIcon, AdjustmentsHorizontalIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { ShapeType, Language } from '../types';
 import { t } from '../constants/translations';
 
@@ -10,6 +10,12 @@ interface VisualizerControlsProps {
     availableGroups: string[];
     activeGroupId: string | null;
     onSelectGroup: (groupId: string | null) => void;
+    isObjectListOpen: boolean;
+    onToggleObjectList: () => void;
+    onSaveImage: () => void;
+    onShareBlob?: () => Promise<{ blob: Blob | null, filename: string } | null>;
+    isVisible: boolean;
+    onToggleVisible: () => void;
     lang: Language;
 }
 
@@ -20,8 +26,63 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
     availableGroups,
     activeGroupId,
     onSelectGroup,
+    isObjectListOpen,
+    onToggleObjectList,
+    onSaveImage,
+    onShareBlob,
+    isVisible,
+    onToggleVisible,
     lang
 }) => {
+    const [isShareOpen, setIsShareOpen] = useState(false);
+    const shareMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (shareMenuRef.current && !shareMenuRef.current.contains(event.target as Node)) {
+                setIsShareOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        if (!isVisible) {
+            setIsShareOpen(false);
+        }
+    }, [isVisible]);
+
+    const handleDownload = () => {
+        onSaveImage();
+        setIsShareOpen(false);
+    };
+
+    const handleShareClick = async () => {
+        const isMobile = window.innerWidth < 768;
+        if (isMobile && navigator.share && onShareBlob) {
+            try {
+                const result = await onShareBlob();
+                if (result && result.blob) {
+                    const file = new File([result.blob], result.filename, { type: result.blob.type });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: 'CP Visualization',
+                            text: t(lang, 'shareText'),
+                        });
+                        return;
+                    }
+                }
+            } catch (error) {
+                if (error instanceof Error && error.name === 'AbortError') return;
+                console.error('Error sharing:', error);
+            }
+        }
+
+        setIsShareOpen(!isShareOpen);
+    };
+
     const ID_TOGGLE_OPTIONS = [
         {
             type: ShapeType.POINT,
@@ -49,6 +110,21 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
             label: t(lang, 'polygons')
         }
     ];
+
+    if (!isVisible) {
+        return (
+            <div className="absolute top-6 right-6 flex flex-col gap-3 pointer-events-none z-10">
+                <button
+                    onClick={onToggleVisible}
+                    className="pointer-events-auto flex items-center gap-2 rounded-xl border border-gray-200/70 bg-white/90 backdrop-blur px-3 py-2 text-xs font-medium text-gray-600 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] hover:bg-gray-50 hover:text-gray-900 transition-all"
+                    title={t(lang, 'showControls')}
+                >
+                    <AdjustmentsHorizontalIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline whitespace-nowrap">{t(lang, 'controls')}</span>
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="absolute top-6 right-6 flex flex-col gap-3 pointer-events-none z-10">
@@ -110,6 +186,70 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
                 >
                     <ArrowsPointingOutIcon className="w-4 h-4" />
                     <span className="text-xs font-semibold whitespace-nowrap">{t(lang, 'fitToScreen')}</span>
+                </button>
+
+                <div className="w-px h-5 bg-gray-100 mx-0.5"></div>
+
+                {/* Object List Toggle */}
+                <button
+                    onClick={onToggleObjectList}
+                    className={`flex items-center justify-center gap-1.5 px-2 h-8 rounded-lg text-xs font-medium border transition-all w-8 sm:w-auto sm:min-w-[110px] ${isObjectListOpen
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm'
+                        : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-900'
+                        }`}
+                    title={t(lang, 'objectList')}
+                >
+                    <ListBulletIcon className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden sm:inline whitespace-nowrap">{t(lang, 'objectList')}</span>
+                </button>
+
+                {/* Share Dropdown */}
+                <div className="relative ml-0.5" ref={shareMenuRef}>
+                    <button
+                        onClick={handleShareClick}
+                        className={`
+                            flex items-center justify-center gap-1.5 px-2 h-8 rounded-lg text-xs font-semibold border transition-all active:scale-95 w-8 sm:w-auto
+                            ${isShareOpen
+                                ? 'bg-slate-800 text-white border-transparent'
+                                : 'bg-slate-900 text-white border-transparent hover:bg-slate-800 shadow-sm'}
+                        `}
+                        title={t(lang, 'share')}
+                    >
+                        <ShareIcon className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">{t(lang, 'share')}</span>
+                    </button>
+
+                    {isShareOpen && (
+                        <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                            <button
+                                onClick={handleDownload}
+                                className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2 transition-colors"
+                            >
+                                <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                                {t(lang, 'downloadImage')}
+                            </button>
+
+                            {/* Disabled X Share Button */}
+                            <div className="w-full text-left px-4 py-2 text-xs font-medium text-slate-400 flex items-center gap-2 cursor-not-allowed opacity-75">
+                                <svg className="w-3.5 h-3.5 grayscale opacity-50" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                                <div className="flex flex-col">
+                                    <span>{t(lang, 'shareOnX')}</span>
+                                    <span className="text-[9px] text-slate-400 font-normal">Coming soon in future update</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="w-px h-5 bg-gray-100 mx-0.5"></div>
+
+                <button
+                    onClick={onToggleVisible}
+                    className="flex items-center justify-center gap-1.5 px-2 h-8 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-all w-8 sm:w-auto"
+                    title={t(lang, 'hideControls')}
+                >
+                    <EyeSlashIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline whitespace-nowrap">{t(lang, 'hideControls')}</span>
                 </button>
             </div>
         </div>

@@ -3,11 +3,112 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CP Geometry Visualizer</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><circle cx=%2212%22 cy=%225%22 r=%222%22/><path d=%22M11.3 7.1L5 20%22/><path d=%22M12.7 7.1L19 20%22/><path d=%22M5 20a11 11 0 0 0 14 0%22/></svg>" />
+    <title>CP Geometry Visualizer | Competitive Programming Geometry | &#31478;&#12503;&#12525;&#24190;&#20309;&#12499;&#12472;&#12517;&#12450;&#12521;&#12452;&#12470;</title>
+    <meta name="description" content="Geometry visualizer for competitive programming. Draw points, lines, segments, circles, polygons, and text from custom input formats. &#31478;&#25216;&#12503;&#12525;&#12464;&#12521;&#12511;&#12531;&#12464;&#12398;&#24190;&#20309;&#12434;&#28857;&#12539;&#32218;&#12539;&#20870;&#12539;&#22810;&#35282;&#24418;&#12391;&#21487;&#35222;&#21270;&#12290;&#20837;&#21147;&#24418;&#24335;&#12434;&#33258;&#30001;&#12395;&#23450;&#32681;&#12290;" />
+    <meta name="keywords" content="competitive programming, geometry visualizer, geometry drawing, geometry renderer, point cloud, line segment, polygon, circle, visualization, debugging, &#31478;&#25216;&#12503;&#12525;&#12464;&#12521;&#12511;&#12531;&#12464;, &#31478;&#12503;&#12525;, &#24190;&#20309;, &#12499;&#12472;&#12517;&#12450;&#12521;&#12452;&#12470;, &#34920;&#31034;, &#25551;&#30011;, &#22259;&#31034;, &#28857;&#32676;, &#32218;&#20998;, &#22810;&#35282;&#24418;, &#20870;" />
+    <meta name="author" content="tatesoto" />
+    <meta name="application-name" content="CP Geometry Visualizer" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://tatesoto.github.io/cp-geo-visualizer/" />
+    <link rel="alternate" hreflang="en" href="https://tatesoto.github.io/cp-geo-visualizer/" />
+    <link rel="alternate" hreflang="ja" href="https://tatesoto.github.io/cp-geo-visualizer/" />
+    <link rel="alternate" hreflang="x-default" href="https://tatesoto.github.io/cp-geo-visualizer/" />
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="https://tatesoto.github.io/cp-geo-visualizer/sitemap.xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CP Geometry Visualizer" />
+    <meta property="og:title" content="CP Geometry Visualizer" />
+    <meta property="og:description" content="Geometry visualizer for competitive programming. Draw points, lines, segments, circles, polygons, and text from custom input formats." />
+    <meta property="og:url" content="https://tatesoto.github.io/cp-geo-visualizer/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="ja_JP" />
+    <meta property="og:image" content="https://tatesoto.github.io/cp-geo-visualizer/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="CP Geometry Visualizer preview" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CP Geometry Visualizer" />
+    <meta name="twitter:description" content="Geometry visualizer for competitive programming. Draw points, lines, segments, circles, polygons, and text from custom input formats." />
+    <meta name="twitter:image" content="https://tatesoto.github.io/cp-geo-visualizer/og.png" />
+    <meta name="twitter:image:alt" content="CP Geometry Visualizer preview" />
+    <link rel="icon" type="image/png" sizes="192x192" href="%BASE_URL%icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="%BASE_URL%icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%BASE_URL%icon-180.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "CP Geometry Visualizer",
+        "url": "https://tatesoto.github.io/cp-geo-visualizer/",
+        "description": "Geometry visualizer for competitive programming. Draw points, lines, segments, circles, polygons, and text from custom input formats. \u7af6\u6280\u30d7\u30ed\u30b0\u30e9\u30df\u30f3\u30b0\u306e\u5e7e\u4f55\u3092\u53ef\u8996\u5316\u3059\u308b\u30c4\u30fc\u30eb\u3067\u3059\u3002\u70b9\u30fb\u7dda\u30fb\u7dda\u5206\u30fb\u5186\u30fb\u591a\u89d2\u5f62\u30fb\u30c6\u30ad\u30b9\u30c8\u306b\u5bfe\u5fdc\u3002",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web",
+        "inLanguage": ["en", "ja"],
+        "isAccessibleForFree": true,
+        "keywords": "competitive programming, geometry visualizer, geometry drawing, geometry renderer, point cloud, line segment, polygon, circle, visualization, debugging, \u7af6\u6280\u30d7\u30ed\u30b0\u30e9\u30df\u30f3\u30b0, \u7af6\u30d7\u30ed, \u5e7e\u4f55, \u30d3\u30b8\u30e5\u30a2\u30e9\u30a4\u30b6, \u8868\u793a, \u63cf\u753b, \u56f3\u793a, \u70b9\u7fa4, \u7dda\u5206, \u591a\u89d2\u5f62, \u5186",
+        "featureList": [
+          "Custom input format with Read/rep/Group",
+          "Draw points, lines, segments, circles, polygons, and text",
+          "Group and filter shapes; export images",
+          "Handles large coordinates and many shapes"
+        ],
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "sameAs": [
+          "https://github.com/tatesoto/cp-geo-visualizer"
+        ],
+        "author": {
+          "@type": "Person",
+          "name": "tatesoto"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is CP Geometry Visualizer? / \u3053\u308c\u306f\u4f55\u3067\u3059\u304b\uff1f",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A fast geometry visualizer for competitive programming. Draw points, lines, segments, circles, polygons, and text from custom input formats. \u7af6\u6280\u30d7\u30ed\u30b0\u30e9\u30df\u30f3\u30b0\u306e\u5e7e\u4f55\u3092\u53ef\u8996\u5316\u3059\u308b\u30c4\u30fc\u30eb\u3067\u3059\u3002\u70b9\u30fb\u7dda\u30fb\u7dda\u5206\u30fb\u5186\u30fb\u591a\u89d2\u5f62\u30fb\u30c6\u30ad\u30b9\u30c8\u306b\u5bfe\u5fdc\u3002"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I use it? / \u4f7f\u3044\u65b9\u306f\uff1f",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Define the input format with Read/rep/Group, paste input data, and click Visualize. \u30d5\u30a9\u30fc\u30de\u30c3\u30c8\u6b04\u3067\u5165\u529b\u5f62\u5f0f\u3092\u5b9a\u7fa9\u3057\u3001\u5165\u529b\u30c7\u30fc\u30bf\u3092\u8cbc\u308a\u4ed8\u3051\u3066\u53ef\u8996\u5316\u3057\u307e\u3059\u3002"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which shapes are supported? / \u5bfe\u5fdc\u3059\u308b\u56f3\u5f62\u306f\uff1f",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Points, lines, segments, circles, polygons, and text. \u70b9\u3001\u7dda\u3001\u7dda\u5206\u3001\u5186\u3001\u591a\u89d2\u5f62\u3001\u30c6\u30ad\u30b9\u30c8\u3092\u63cf\u753b\u3067\u304d\u307e\u3059\u3002"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is it free? / \u7121\u6599\u3067\u3059\u304b\uff1f",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, it is free to use in the browser. \u30d6\u30e9\u30a6\u30b6\u3067\u7121\u6599\u3067\u4f7f\u3048\u307e\u3059\u3002"
+            }
+          }
+        ]
+      }
+    </script>
   <script type="importmap">
 {
   "imports": {
@@ -23,6 +124,30 @@
 </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <main style="max-width: 960px; margin: 24px auto; padding: 0 16px; font-family: system-ui, -apple-system, Segoe UI, sans-serif; line-height: 1.6;">
+        <h1>CP Geometry Visualizer</h1>
+        <p>Competitive programming geometry visualizer. Draw points, lines, segments, circles, polygons, and text from custom input formats.</p>
+        <p>&#31478;&#25216;&#12503;&#12525;&#12464;&#12521;&#12511;&#12531;&#12464;&#12398;&#24190;&#20309;&#12434;&#21487;&#35222;&#21270;&#12377;&#12427;&#12484;&#12540;&#12523;&#12391;&#12377;&#12290;&#28857;&#12539;&#32218;&#12539;&#32218;&#20998;&#12539;&#20870;&#12539;&#22810;&#35282;&#24418;&#12539;&#12486;&#12461;&#12473;&#12488;&#12395;&#23550;&#24540;&#12290;</p>
+        <h2>Features</h2>
+        <ul>
+          <li>Custom input format with Read/rep/Group</li>
+          <li>Draw points, lines, segments, circles, polygons, and text</li>
+          <li>Group and filter shapes; export images</li>
+        </ul>
+        <h2>FAQ</h2>
+        <dl>
+          <dt>What is CP Geometry Visualizer?</dt>
+          <dd>A fast geometry visualizer for competitive programming.</dd>
+          <dt>&#12371;&#12428;&#12399;&#20309;&#12391;&#12377;&#12363;&#65311;</dt>
+          <dd>&#31478;&#25216;&#12503;&#12525;&#12464;&#12521;&#12511;&#12531;&#12464;&#12398;&#24190;&#20309;&#12434;&#21487;&#35222;&#21270;&#12377;&#12427;&#12484;&#12540;&#12523;&#12391;&#12377;&#12290;</dd>
+          <dt>How do I use it?</dt>
+          <dd>Define the input format, paste input data, and click Visualize.</dd>
+          <dt>&#20351;&#12356;&#26041;&#12399;&#65311;</dt>
+          <dd>&#12501;&#12457;&#12540;&#12510;&#12483;&#12488;&#27396;&#12391;&#20837;&#21147;&#24418;&#24335;&#12434;&#23450;&#32681;&#12375;&#12289;&#20837;&#21147;&#12487;&#12540;&#12479;&#12434;&#36028;&#12426;&#20184;&#12369;&#12390;&#21487;&#35222;&#21270;&#12375;&#12414;&#12377;&#12290;</dd>
+        </dl>
+      </main>
+    </noscript>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
