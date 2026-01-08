@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { ChevronDownIcon, ChevronRightIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, ArrowsPointingOutIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronRightIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, ArrowsPointingOutIcon, TrashIcon, RectangleStackIcon } from '@heroicons/react/24/outline';
 import { SNIPPETS, SnippetKey } from '../constants/snippets';
 import { Language } from '../types';
 import { t, TRANSLATIONS } from '../constants/translations';
@@ -394,7 +394,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                                     Tab
                                 </button>
                             )}
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                                 <button
                                     onClick={handleClear}
                                     className="p-1 text-gray-400 hover:text-red-500 transition-colors"
@@ -402,16 +402,21 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                                 >
                                     <TrashIcon className="w-4 h-4" />
                                 </button>
-                                <select
-                                    className="bg-transparent text-xs text-gray-500 hover:text-gray-900 border-none outline-none cursor-pointer pr-1 transition-colors text-right appearance-none"
-                                    onChange={(e) => loadSnippet(e.target.value)}
-                                    value=""
-                                >
-                                    <option value="" disabled>{t(lang, 'loadSnippet')}</option>
-                                    {Object.entries(SNIPPETS).map(([key, _snip]) => (
-                                        <option key={key} value={key}>{t(lang, `snippet_${key}` as keyof typeof TRANSLATIONS['en'])}</option>
-                                    ))}
-                                </select>
+                                <div className="relative rounded px-1.5 py-0.5 hover:bg-gray-100 transition-colors">
+                                    <RectangleStackIcon className="w-3.5 h-3.5 text-gray-400 pointer-events-none absolute left-1 top-1/2 -translate-y-1/2" />
+                                    <select
+                                        className="bg-transparent text-xs text-gray-500 hover:text-gray-900 border-none outline-none cursor-pointer pr-1 pl-4 transition-colors text-right appearance-none truncate w-[110px]"
+                                        onChange={(e) => loadSnippet(e.target.value)}
+                                        value=""
+                                    >
+                                        <option value="" disabled>
+                                            {t(lang, 'loadSnippet')}
+                                        </option>
+                                        {Object.entries(SNIPPETS).map(([key, _snip]) => (
+                                            <option key={key} value={key}>{t(lang, `snippet_${key}` as keyof typeof TRANSLATIONS['en'])}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -462,7 +467,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                             {isInputOpen ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
                             <span className="text-xs font-semibold uppercase tracking-wide">{t(lang, 'inputData')}</span>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.0">
                             <button
                                 onClick={handleClearInput}
                                 className="p-1 text-gray-400 hover:text-red-500 transition-colors"
