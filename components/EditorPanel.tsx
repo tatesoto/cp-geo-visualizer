@@ -405,7 +405,10 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                                 <div className="relative rounded px-1.5 py-0.5 hover:bg-gray-100 transition-colors">
                                     <RectangleStackIcon className="w-3.5 h-3.5 text-gray-400 pointer-events-none absolute left-1 top-1/2 -translate-y-1/2" />
                                     <select
-                                        className="bg-transparent text-xs text-gray-500 hover:text-gray-900 border-none outline-none cursor-pointer pr-1 pl-4 transition-colors text-right appearance-none truncate w-[110px]"
+                                        className={`bg-transparent text-xs text-gray-500 hover:text-gray-900 border-none outline-none cursor-pointer pr-1 pl-4 transition-colors appearance-none truncate ${lang === 'ja'
+                                            ? 'w-[130px]'
+                                            : 'w-[110px]'
+                                            }`}
                                         onChange={(e) => loadSnippet(e.target.value)}
                                         value=""
                                     >
