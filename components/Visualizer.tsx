@@ -30,6 +30,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
   const containerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<Viewport>({ centerX: 0, centerY: 0, scale: 50 });
   const requestRef = useRef<number>(0);
+  const isPageZoomedRef = useRef(false);
 
   // Refs for current state to be accessible inside requestAnimationFrame callback
   const shapesRef = useRef<Shape[]>(shapes);
@@ -39,6 +40,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
   const activeGroupIdRef = useRef(activeGroupId);
 
   const [hoverInfo, setHoverInfo] = useState<{ x: number, y: number, text: string } | null>(null);
+  const [showZoomHint, setShowZoomHint] = useState(false);
 
   // --- Rendering Logic ---
 
@@ -254,6 +256,73 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
 
   const isDraggingRef = useRef(false);
   const lastMousePosRef = useRef({ x: 0, y: 0 });
+  const lastPinchDistanceRef = useRef<number | null>(null);
+  const zoomHintTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const getPageScale = () => {
+      if (window.visualViewport?.scale) {
+        return window.visualViewport.scale;
+      }
+      const doc = document.documentElement;
+      if (doc && doc.clientWidth) {
+        const scale = window.innerWidth / doc.clientWidth;
+        return Number.isFinite(scale) && scale > 0 ? scale : 1;
+      }
+      return 1;
+    };
+
+    const updateZoomState = () => {
+      const zoomed = getPageScale() > 1.01;
+      if (zoomed !== isPageZoomedRef.current) {
+        isPageZoomedRef.current = zoomed;
+        if (zoomed) {
+          setShowZoomHint(true);
+          if (zoomHintTimeoutRef.current) {
+            window.clearTimeout(zoomHintTimeoutRef.current);
+          }
+          zoomHintTimeoutRef.current = window.setTimeout(() => {
+            setShowZoomHint(false);
+          }, 2500);
+        } else {
+          setShowZoomHint(false);
+          if (zoomHintTimeoutRef.current) {
+            window.clearTimeout(zoomHintTimeoutRef.current);
+            zoomHintTimeoutRef.current = null;
+          }
+        }
+      }
+      if (zoomed) {
+        isDraggingRef.current = false;
+        lastPinchDistanceRef.current = null;
+      }
+    };
+
+    updateZoomState();
+
+    const viewport = window.visualViewport;
+    if (viewport) {
+      viewport.addEventListener('resize', updateZoomState);
+      viewport.addEventListener('scroll', updateZoomState);
+      return () => {
+        viewport.removeEventListener('resize', updateZoomState);
+        viewport.removeEventListener('scroll', updateZoomState);
+        if (zoomHintTimeoutRef.current) {
+          window.clearTimeout(zoomHintTimeoutRef.current);
+          zoomHintTimeoutRef.current = null;
+        }
+      };
+    }
+
+    window.addEventListener('resize', updateZoomState);
+    return () => {
+      window.removeEventListener('resize', updateZoomState);
+      if (zoomHintTimeoutRef.current) {
+        window.clearTimeout(zoomHintTimeoutRef.current);
+        zoomHintTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -363,7 +432,6 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
   };
 
   // --- Touch Events ---
-  const lastPinchDistanceRef = useRef<number | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -381,6 +449,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     };
 
     const handleTouchStart = (e: TouchEvent) => {
+      if (isPageZoomedRef.current) return;
       e.preventDefault();
       if (e.touches.length === 1) {
         isDraggingRef.current = true;
@@ -393,6 +462,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+      if (isPageZoomedRef.current) return;
       e.preventDefault();
       const container = containerRef.current;
       if (!container) return;
@@ -437,6 +507,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
+      if (isPageZoomedRef.current) return;
       e.preventDefault();
       if (e.touches.length < 2) {
         lastPinchDistanceRef.current = null;
@@ -491,6 +562,15 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
           style={{ left: hoverInfo.x, top: hoverInfo.y }}
         >
           {hoverInfo.text}
+        </div>
+      )}
+
+      {/* Zoom Hint Toast */}
+      {showZoomHint && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+          <div className="bg-slate-900/90 text-white text-[11px] px-3 py-2 rounded-md shadow-lg">
+            {t(lang, 'zoomHint')}
+          </div>
         </div>
       )}
     </div>
