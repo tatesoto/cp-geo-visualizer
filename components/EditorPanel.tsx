@@ -164,7 +164,7 @@ const insertNewlineWithIndent = (view: EditorView) => {
 const getSelectedLineNumbers = (state: EditorState) => {
     const lines = new Set<number>();
     for (const range of state.selection.ranges) {
-        let from = range.from;
+        const from = range.from;
         let to = range.to;
         if (to > from && state.doc.lineAt(to).from === to) {
             to -= 1;
