@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import CodeMirror, { ReactCodeMirrorRef } from '@uiw/react-codemirror';
-import { EditorState, RangeSetBuilder } from '@codemirror/state';
+import { EditorState, EditorSelection, Prec, RangeSetBuilder } from '@codemirror/state';
 import { EditorView, keymap, placeholder, Decoration, ViewPlugin, ViewUpdate } from '@codemirror/view';
 import { autocompletion, completeFromList } from '@codemirror/autocomplete';
 import { ChevronDownIcon, ChevronRightIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, ArrowsPointingOutIcon, TrashIcon, RectangleStackIcon } from '@heroicons/react/24/outline';
@@ -24,6 +24,8 @@ interface EditorPanelProps {
 
 const MIN_WIDTH = 250;
 const MAX_WIDTH = 800;
+const INDENT_SIZE = 4;
+const INDENT_UNIT = ' '.repeat(INDENT_SIZE);
 
 // Curated suggestion list with proper casing
 const SUGGESTION_LIST = [
@@ -98,6 +100,132 @@ const commentLinePlugin = ViewPlugin.fromClass(class {
     decorations: (v) => v.decorations
 });
 
+const normalizeIndent = (indent: string) => {
+    let column = 0;
+    let normalized = '';
+    for (const char of indent) {
+        if (char === '\t') {
+            const spaces = INDENT_SIZE - (column % INDENT_SIZE);
+            normalized += ' '.repeat(spaces);
+            column += spaces;
+        } else {
+            normalized += ' ';
+            column += 1;
+        }
+    }
+    return normalized;
+};
+
+const getLineIndent = (lineText: string) => {
+    const match = lineText.match(/^[\t ]*/);
+    return match ? normalizeIndent(match[0]) : '';
+};
+
+const stripInlineComment = (lineText: string) => {
+    let inQuote = false;
+    let quoteChar = '';
+    for (let i = 0; i < lineText.length; i++) {
+        const char = lineText[i];
+        if (inQuote) {
+            if (char === quoteChar) {
+                inQuote = false;
+            }
+        } else if (char === '"' || char === "'") {
+            inQuote = true;
+            quoteChar = char;
+        } else if (char === '/' && lineText[i + 1] === '/') {
+            return lineText.slice(0, i);
+        }
+    }
+    return lineText;
+};
+
+const shouldIndentAfterLine = (lineText: string) => {
+    const withoutComment = stripInlineComment(lineText);
+    return withoutComment.trimEnd().endsWith(':');
+};
+
+const insertNewlineWithIndent = (view: EditorView) => {
+    const { state } = view;
+    const transaction = state.changeByRange((range) => {
+        const line = state.doc.lineAt(range.from);
+        const baseIndent = getLineIndent(line.text);
+        const extraIndent = shouldIndentAfterLine(line.text) ? INDENT_UNIT : '';
+        const insert = `\n${baseIndent}${extraIndent}`;
+        return {
+            changes: { from: range.from, to: range.to, insert },
+            range: EditorSelection.cursor(range.from + insert.length)
+        };
+    });
+    view.dispatch(transaction);
+    return true;
+};
+
+const getSelectedLineNumbers = (state: EditorState) => {
+    const lines = new Set<number>();
+    for (const range of state.selection.ranges) {
+        let from = range.from;
+        let to = range.to;
+        if (to > from && state.doc.lineAt(to).from === to) {
+            to -= 1;
+        }
+        const startLine = state.doc.lineAt(from).number;
+        const endLine = state.doc.lineAt(to).number;
+        for (let lineNo = startLine; lineNo <= endLine; lineNo++) {
+            lines.add(lineNo);
+        }
+    }
+    return Array.from(lines).sort((a, b) => a - b);
+};
+
+const indentSelection = (view: EditorView) => {
+    const { state } = view;
+    const hasSelection = state.selection.ranges.some((range) => !range.empty);
+    if (!hasSelection) {
+        const transaction = state.changeByRange((range) => ({
+            changes: { from: range.from, to: range.to, insert: INDENT_UNIT },
+            range: EditorSelection.cursor(range.from + INDENT_UNIT.length)
+        }));
+        view.dispatch(transaction);
+        return true;
+    }
+
+    const lineNumbers = getSelectedLineNumbers(state);
+    if (lineNumbers.length === 0) return false;
+    const changes = lineNumbers.map((lineNo) => {
+        const line = state.doc.line(lineNo);
+        return { from: line.from, to: line.from, insert: INDENT_UNIT };
+    });
+    view.dispatch({ changes });
+    return true;
+};
+
+const unindentSelection = (view: EditorView) => {
+    const { state } = view;
+    const lineNumbers = getSelectedLineNumbers(state);
+    if (lineNumbers.length === 0) return false;
+
+    const changes: { from: number; to: number; insert: string }[] = [];
+    for (const lineNo of lineNumbers) {
+        const line = state.doc.line(lineNo);
+        if (line.text.startsWith('\t')) {
+            changes.push({ from: line.from, to: line.from + 1, insert: '' });
+            continue;
+        }
+        let removeCount = 0;
+        while (removeCount < INDENT_SIZE && line.text[removeCount] === ' ') {
+            removeCount += 1;
+        }
+        if (removeCount > 0) {
+            changes.push({ from: line.from, to: line.from + removeCount, insert: '' });
+        }
+    }
+
+    if (changes.length === 0) return false;
+    view.dispatch({ changes });
+    return true;
+};
+
 const toggleLineComment = (view: EditorView) => {
     const { state } = view;
     const changes: { from: number; to: number; insert: string }[] = [];
@@ -154,6 +282,13 @@ const toggleLineComment = (view: EditorView) => {
     view.dispatch({ changes });
     return true;
 };
+
+const editorKeymap = Prec.high(keymap.of([
+    { key: 'Mod-/', run: toggleLineComment },
+    { key: 'Tab', run: indentSelection },
+    { key: 'Shift-Tab', run: unindentSelection },
+    { key: 'Enter', run: insertNewlineWithIndent }
+]));
 
 const EditorPanel: React.FC<EditorPanelProps> = ({
     isOpen,
@@ -243,11 +378,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
     const handleManualIndent = () => {
         const view = formatEditorRef.current?.view;
         if (!view) return;
-        const { from, to } = view.state.selection.main;
-        view.dispatch({
-            changes: { from, to, insert: '\t' },
-            selection: { anchor: from + 1 }
-        });
+        indentSelection(view);
         view.focus();
     };
 
@@ -392,8 +523,8 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                             extensions={[
                                 formatEditorTheme,
                                 EditorView.lineWrapping,
-                                EditorState.tabSize.of(4),
-                                keymap.of([{ key: 'Mod-/', run: toggleLineComment }]),
+                                EditorState.tabSize.of(INDENT_SIZE),
+                                editorKeymap,
                                 autocompletion({ override: [completeFromList(SUGGESTION_LIST)] }),
                                 placeholder('Enter parsing logic...'),
                                 commentLinePlugin
@@ -449,7 +580,8 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                             extensions={[
                                 formatEditorTheme,
                                 EditorView.lineWrapping,
-                                EditorState.tabSize.of(4),
+                                EditorState.tabSize.of(INDENT_SIZE),
+                                editorKeymap,
                                 placeholder('Paste input data here...'),
                                 commentLinePlugin
                             ]}

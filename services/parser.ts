@@ -168,10 +168,22 @@ export const parseInput = (format: string, input: string, timeoutMs: number = 30
   return { shapes: ctx.shapes, error: null };
 };
 
+const INDENT_TAB_WIDTH = 4;
+
 function getIndent(line: string): number {
-  const expanded = line.replace(/\t/g, '  ');
-  const match = expanded.match(/^(\s*)/);
-  return match ? match[1].length : 0;
+  let count = 0;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === ' ') {
+      count += 1;
+    } else if (char === '\t') {
+      const spaces = INDENT_TAB_WIDTH - (count % INDENT_TAB_WIDTH);
+      count += spaces;
+    } else {
+      break;
+    }
+  }
+  return count;
 }
 
 // Strips comments starting with //, ignoring those inside quotes
