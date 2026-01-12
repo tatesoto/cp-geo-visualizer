@@ -2,6 +2,8 @@ import { Shape, ShapeType, Viewport, Language } from '../types';
 import { worldToScreen, screenToWorld } from './geometry';
 import { t } from '../constants/translations';
 
+const GEO_MONO_FONT_STACK = 'Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+
 export const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number, viewport: Viewport) => {
   const { centerX, centerY, scale } = viewport;
   
@@ -42,7 +44,7 @@ export const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: n
 
   // Labels
   ctx.fillStyle = '#94a3b8'; // Slate 400
-  ctx.font = '10px "Inter", sans-serif';
+  ctx.font = `10px ${GEO_MONO_FONT_STACK}`;
   
   // X Axis Labels
   ctx.textAlign = 'center';
@@ -254,7 +256,7 @@ export const drawShape = (
     const shouldDrawId = shape.type !== ShapeType.TEXT && (visibleIdTypes.includes(shape.type) || isHighlight);
 
     if (shouldDrawId) {
-        ctx.font = '600 10px "JetBrains Mono", monospace';
+        ctx.font = `600 10px ${GEO_MONO_FONT_STACK}`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
         

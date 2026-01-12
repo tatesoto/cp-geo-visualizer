@@ -1,9 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
+import CodeMirror, { ReactCodeMirrorRef } from '@uiw/react-codemirror';
+import { EditorState, RangeSetBuilder } from '@codemirror/state';
+import { EditorView, keymap, placeholder, Decoration, ViewPlugin, ViewUpdate } from '@codemirror/view';
+import { autocompletion, completeFromList } from '@codemirror/autocomplete';
 import { ChevronDownIcon, ChevronRightIcon, PlayIcon, ChevronLeftIcon, DocumentTextIcon, ArrowsPointingOutIcon, TrashIcon, RectangleStackIcon } from '@heroicons/react/24/outline';
 import { SNIPPETS, SnippetKey } from '../constants/snippets';
 import { Language } from '../types';
 import { t, TRANSLATIONS } from '../constants/translations';
-import { getCaretCoordinates } from '../utils/caret';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface EditorPanelProps {
@@ -33,8 +36,124 @@ const SUGGESTION_LIST = [
     'Text',
     'Read',
     'rep',
-    'Group'
+    'Group',
+    'if',
+    'elif',
+    'else',
+    'break',
+    'continue'
 ].sort();
+
+const formatEditorTheme = EditorView.theme({
+    '&': {
+        height: '100%',
+        backgroundColor: '#ffffff'
+    },
+    '.cm-scroller': {
+        fontFamily: 'ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+        fontSize: '13px',
+        lineHeight: '1.5'
+    },
+    '.cm-content': {
+        padding: '16px'
+    },
+    '.cm-gutters': {
+        display: 'none'
+    },
+    '.cm-activeLine': {
+        backgroundColor: 'transparent'
+    },
+    '.cm-line.cm-comment-line': {
+        color: '#9ca3af'
+    }
+});
+
+const commentLineDecoration = Decoration.line({ class: 'cm-comment-line' });
+
+const commentLinePlugin = ViewPlugin.fromClass(class {
+    decorations;
+    constructor(view: EditorView) {
+        this.decorations = this.buildDecorations(view);
+    }
+    update(update: ViewUpdate) {
+        if (update.docChanged || update.viewportChanged) {
+            this.decorations = this.buildDecorations(update.view);
+        }
+    }
+    buildDecorations(view: EditorView) {
+        const builder = new RangeSetBuilder<Decoration>();
+        for (const { from, to } of view.visibleRanges) {
+            let pos = from;
+            while (pos <= to) {
+                const line = view.state.doc.lineAt(pos);
+                if (line.text.trimStart().startsWith('//')) {
+                    builder.add(line.from, line.from, commentLineDecoration);
+                }
+                pos = line.to + 1;
+            }
+        }
+        return builder.finish();
+    }
+}, {
+    decorations: (v) => v.decorations
+});
+
+const toggleLineComment = (view: EditorView) => {
+    const { state } = view;
+    const changes: { from: number; to: number; insert: string }[] = [];
+    const processed = new Set<number>();
+
+    for (const range of state.selection.ranges) {
+        const from = range.from;
+        let to = range.to;
+        if (to > from && state.doc.lineAt(to).from === to) {
+            to -= 1;
+        }
+        const startLine = state.doc.lineAt(from).number;
+        const endLine = state.doc.lineAt(to).number;
+
+        let allCommented = true;
+        for (let lineNo = startLine; lineNo <= endLine; lineNo++) {
+            const line = state.doc.line(lineNo);
+            if (line.text.trim().length === 0) continue;
+            if (!line.text.trimStart().startsWith('//')) {
+                allCommented = false;
+                break;
+            }
+        }
+
+        for (let lineNo = startLine; lineNo <= endLine; lineNo++) {
+            if (processed.has(lineNo)) continue;
+            processed.add(lineNo);
+            const line = state.doc.line(lineNo);
+            if (line.text.trim().length === 0) continue;
+            const indentMatch = line.text.match(/^(\s*)/);
+            const indentLen = indentMatch ? indentMatch[1].length : 0;
+            const afterIndent = line.text.slice(indentLen);
+            if (allCommented) {
+                if (afterIndent.startsWith('//')) {
+                    const removeLen = afterIndent.startsWith('// ') ? 3 : 2;
+                    changes.push({
+                        from: line.from + indentLen,
+                        to: line.from + indentLen + removeLen,
+                        insert: ''
+                    });
+                }
+            } else {
+                changes.push({
+                    from: line.from + indentLen,
+                    to: line.from + indentLen,
+                    insert: '// '
+                });
+            }
+        }
+    }
+
+    if (changes.length === 0) return false;
+    changes.sort((a, b) => (b.from - a.from) || (b.to - a.to));
+    view.dispatch({ changes });
+    return true;
+};
 
 const EditorPanel: React.FC<EditorPanelProps> = ({
     isOpen,
@@ -50,18 +169,13 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
 }) => {
     const [isFormatOpen, setIsFormatOpen] = useState(true);
     const [isInputOpen, setIsInputOpen] = useState(true);
-    const formatInputRef = useRef<HTMLTextAreaElement>(null);
+    const formatEditorRef = useRef<ReactCodeMirrorRef>(null);
     const [snippetSelectKey, setSnippetSelectKey] = useState(0);
+    const inputEditorRef = useRef<ReactCodeMirrorRef>(null);
 
     // Resize State
     const [width, setWidth] = useState(400);
     const [isResizing, setIsResizing] = useState(false);
-
-    // Autocomplete State
-    const [suggestions, setSuggestions] = useState<string[]>([]);
-    const [suggestionIndex, setSuggestionIndex] = useState(0);
-    const [showSuggestions, setShowSuggestions] = useState(false);
-    const [caretCoords, setCaretCoords] = useState({ top: 0, left: 0 });
 
     useEffect(() => {
         if (!isResizing) return;
@@ -102,6 +216,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
+
     const loadSnippet = (key: string) => {
         const snippet = SNIPPETS[key as SnippetKey];
         if (snippet) {
@@ -125,208 +240,35 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
         e.target.value = '';
     };
 
-    const checkAutocomplete = (text: string, cursorPos: number) => {
-        // Find word before cursor
-        let start = cursorPos - 1;
-        while (start >= 0 && /\w/.test(text[start])) {
-            start--;
-        }
-        const prefix = text.slice(start + 1, cursorPos);
-
-        if (prefix.length >= 1) {
-            const matches = SUGGESTION_LIST.filter(k => k.toLowerCase().startsWith(prefix.toLowerCase()));
-            if (matches.length > 0) {
-                setSuggestions(matches);
-                setSuggestionIndex(0);
-                setShowSuggestions(true);
-
-                if (formatInputRef.current) {
-                    const coords = getCaretCoordinates(formatInputRef.current, cursorPos);
-                    // Adjust for scroll
-                    // The parent div is `relative`, so offsetTop/Left of the textarea usually 0
-                    // But we need to subtract scrollTop of the textarea
-                    setCaretCoords({
-                        top: coords.top - formatInputRef.current.scrollTop + 20, // + lineHeight
-                        left: coords.left - formatInputRef.current.scrollLeft
-                    });
-                }
-                return;
-            }
-        }
-        setShowSuggestions(false);
-    };
-
-    const insertSuggestion = (suggestion: string) => {
-        if (!formatInputRef.current) return;
-
-        const text = formatText;
-        const cursorPos = formatInputRef.current.selectionStart;
-
-        let start = cursorPos - 1;
-        while (start >= 0 && /\w/.test(text[start])) {
-            start--;
-        }
-        start++; // Start of the word
-
-        const newText = text.slice(0, start) + suggestion + ' ' + text.slice(cursorPos);
-        setFormatText(newText);
-        setShowSuggestions(false);
-
-        // Move cursor
-        setTimeout(() => {
-            if (formatInputRef.current) {
-                const newPos = start + suggestion.length + 1;
-                formatInputRef.current.selectionStart = newPos;
-                formatInputRef.current.selectionEnd = newPos;
-                formatInputRef.current.focus();
-            }
-        }, 0);
-    };
-
     const handleManualIndent = () => {
-        if (!formatInputRef.current) return;
-
-        const target = formatInputRef.current;
-        const { selectionStart, selectionEnd, value } = target;
-
-        const newValue = value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd);
-        setFormatText(newValue);
-
-        setTimeout(() => {
-            if (formatInputRef.current) {
-                formatInputRef.current.selectionStart = selectionStart + 1;
-                formatInputRef.current.selectionEnd = selectionStart + 1;
-                formatInputRef.current.focus();
-            }
-        }, 0);
+        const view = formatEditorRef.current?.view;
+        if (!view) return;
+        const { from, to } = view.state.selection.main;
+        view.dispatch({
+            changes: { from, to, insert: '\t' },
+            selection: { anchor: from + 1 }
+        });
+        view.focus();
     };
 
     const handleClear = () => {
         if (window.confirm(t(lang, 'clearConfirm'))) {
             setFormatText('');
-            if (formatInputRef.current) {
-                formatInputRef.current.focus();
-            }
+            formatEditorRef.current?.view?.focus();
         }
     };
 
     const handleClearInput = () => {
         if (window.confirm(t(lang, 'clearConfirm'))) {
             setInputText('');
+            inputEditorRef.current?.view?.focus();
         }
     };
 
-    const handleFormatChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const val = e.target.value;
-        setFormatText(val);
-        checkAutocomplete(val, e.target.selectionStart);
+    const handleFormatChange = (value: string) => {
+        setFormatText(value);
     };
 
-    const handleFormatKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        const target = e.currentTarget;
-        const { selectionStart, selectionEnd, value } = target;
-
-        // Autocomplete Navigation
-        if (showSuggestions) {
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setSuggestionIndex(prev => (prev + 1) % suggestions.length);
-                return;
-            }
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setSuggestionIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
-                return;
-            }
-            if (e.key === 'Enter' || e.key === 'Tab') {
-                e.preventDefault();
-                insertSuggestion(suggestions[suggestionIndex]);
-                return;
-            }
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                setShowSuggestions(false);
-                return;
-            }
-        }
-
-        if (e.key === 'Tab') {
-            e.preventDefault();
-
-            if (e.shiftKey) {
-                const firstLineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-                let lastLineEnd = value.indexOf('\n', selectionEnd);
-                if (lastLineEnd === -1) lastLineEnd = value.length;
-                const linesContent = value.substring(firstLineStart, lastLineEnd);
-                const lines = linesContent.split('\n');
-                const newLines = lines.map(line => {
-                    if (line.startsWith('\t')) return line.substring(1);
-                    if (line.startsWith('    ')) return line.substring(4);
-                    return line;
-                });
-                const newContent = newLines.join('\n');
-                if (linesContent === newContent) return;
-                const newValue = value.substring(0, firstLineStart) + newContent + value.substring(lastLineEnd);
-                setFormatText(newValue);
-                setTimeout(() => {
-                    if (formatInputRef.current) {
-                        if (selectionStart !== selectionEnd) {
-                            formatInputRef.current.selectionStart = firstLineStart;
-                            formatInputRef.current.selectionEnd = firstLineStart + newContent.length;
-                        } else {
-                            formatInputRef.current.selectionStart = selectionStart;
-                            formatInputRef.current.selectionEnd = selectionStart;
-                        }
-                    }
-                }, 0);
-            } else {
-                if (selectionStart !== selectionEnd) {
-                    const firstLineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-                    let lastLineEnd = value.indexOf('\n', selectionEnd);
-                    if (lastLineEnd === -1) lastLineEnd = value.length;
-                    const linesContent = value.substring(firstLineStart, lastLineEnd);
-                    const lines = linesContent.split('\n');
-                    const newLines = lines.map(line => '\t' + line);
-                    const newContent = newLines.join('\n');
-                    const newValue = value.substring(0, firstLineStart) + newContent + value.substring(lastLineEnd);
-                    setFormatText(newValue);
-                    setTimeout(() => {
-                        if (formatInputRef.current) {
-                            formatInputRef.current.selectionStart = firstLineStart;
-                            formatInputRef.current.selectionEnd = firstLineStart + newContent.length;
-                        }
-                    }, 0);
-                } else {
-                    const newValue = value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd);
-                    setFormatText(newValue);
-                    setTimeout(() => {
-                        if (formatInputRef.current) {
-                            formatInputRef.current.selectionStart = selectionStart + 1;
-                            formatInputRef.current.selectionEnd = selectionStart + 1;
-                        }
-                    }, 0);
-                }
-            }
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-            const lineContent = value.substring(lineStart, selectionStart);
-            const match = lineContent.match(/^(\s*)/);
-            const indentation = match ? match[1] : '';
-            const newValue = value.substring(0, selectionStart) + '\n' + indentation + value.substring(selectionEnd);
-            setFormatText(newValue);
-            setTimeout(() => {
-                if (formatInputRef.current) {
-                    formatInputRef.current.selectionStart = selectionStart + 1 + indentation.length;
-                    formatInputRef.current.selectionEnd = selectionStart + 1 + indentation.length;
-                }
-            }, 0);
-        }
-    };
-
-    const handleFormatClick = () => {
-        setShowSuggestions(false);
-    };
 
     if (!isOpen) {
         return (
@@ -434,39 +376,29 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                     </div>
 
                     <div className="flex-1 relative group bg-white">
-                        <textarea
-                            ref={formatInputRef}
+                        <CodeMirror
+                            ref={formatEditorRef}
                             value={formatText}
                             onChange={handleFormatChange}
-                            onKeyDown={handleFormatKeyDown}
-                            onClick={handleFormatClick}
-                            className="absolute inset-0 w-full h-full bg-white text-gray-800 p-4 font-mono text-[13px] resize-none focus:outline-none leading-normal selection:bg-purple-100"
-                            spellCheck={false}
-                            placeholder="Enter parsing logic..."
-                            style={{ tabSize: 4 }}
+                            className="absolute inset-0"
+                            height="100%"
+                            width="100%"
+                            basicSetup={{
+                                lineNumbers: false,
+                                foldGutter: false,
+                                highlightActiveLine: false,
+                                highlightActiveLineGutter: false
+                            }}
+                            extensions={[
+                                formatEditorTheme,
+                                EditorView.lineWrapping,
+                                EditorState.tabSize.of(4),
+                                keymap.of([{ key: 'Mod-/', run: toggleLineComment }]),
+                                autocompletion({ override: [completeFromList(SUGGESTION_LIST)] }),
+                                placeholder('Enter parsing logic...'),
+                                commentLinePlugin
+                            ]}
                         />
-
-                        {/* Autocomplete Popup */}
-                        {showSuggestions && (
-                            <div
-                                className="absolute z-50 bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden flex flex-col min-w-[120px]"
-                                style={{ top: caretCoords.top, left: caretCoords.left }}
-                            >
-                                {suggestions.map((s, i) => (
-                                    <div
-                                        key={s}
-                                        className={`px-3 py-1.5 text-xs font-mono cursor-pointer transition-colors flex items-center justify-between ${i === suggestionIndex ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-                                        onPointerDown={(e) => {
-                                            e.preventDefault();
-                                            insertSuggestion(s);
-                                        }}
-                                    >
-                                        <span>{s}</span>
-                                        {i === suggestionIndex && <span className="text-[10px] opacity-70">Enter</span>}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 </div>
 
@@ -501,13 +433,26 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
                     </div>
 
                     <div className="flex-1 relative bg-white">
-                        <textarea
+                        <CodeMirror
+                            ref={inputEditorRef}
                             value={inputText}
-                            onChange={(e) => setInputText(e.target.value)}
-                            className="absolute inset-0 w-full h-full bg-white text-gray-800 p-4 font-mono text-[13px] resize-none focus:outline-none leading-normal selection:bg-purple-100"
-                            spellCheck={false}
-                            placeholder="Paste input data here..."
-                            style={{ tabSize: 4 }}
+                            onChange={(value) => setInputText(value)}
+                            className="absolute inset-0"
+                            height="100%"
+                            width="100%"
+                            basicSetup={{
+                                lineNumbers: false,
+                                foldGutter: false,
+                                highlightActiveLine: false,
+                                highlightActiveLineGutter: false
+                            }}
+                            extensions={[
+                                formatEditorTheme,
+                                EditorView.lineWrapping,
+                                EditorState.tabSize.of(4),
+                                placeholder('Paste input data here...'),
+                                commentLinePlugin
+                            ]}
                         />
                     </div>
                 </div>

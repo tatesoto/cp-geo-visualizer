@@ -56,7 +56,7 @@ export function getCaretCoordinates(element: HTMLTextAreaElement, position: numb
   style.visibility = 'hidden'; 
 
   properties.forEach(prop => {
-    // @ts-ignore
+    // @ts-expect-error - CSSStyleDeclaration index signature doesn't cover dynamic keys
     style[prop] = computed[prop];
   });
 
@@ -86,6 +86,6 @@ export function getCaretCoordinates(element: HTMLTextAreaElement, position: numb
 }
 
 function isFirefox() {
-    // @ts-ignore
+    // @ts-expect-error - mozInnerScreenX is a Firefox-only window property
     return typeof window !== 'undefined' && window['mozInnerScreenX'] != null;
 }

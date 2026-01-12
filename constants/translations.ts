@@ -61,6 +61,11 @@ export const TRANSLATIONS = {
     ref_groups: "Groups (Multi-Testcase)",
     ref_desc_read: "Reads values from Input Data into variables.",
     ref_desc_rep: "Repeats the indented block N times. Optional loop variable 'i' before N: 'rep i N:'.",
+    ref_desc_if: "Conditional block. If the condition (non-zero=true) holds, execute the indented block.",
+    ref_desc_elif: "Additional condition checked if previous if/elif were false. 'else if' is also supported.",
+    ref_desc_else: "Fallback block executed when all previous conditions are false.",
+    ref_desc_break: "Exits the nearest enclosing rep loop.",
+    ref_desc_continue: "Skips to the next iteration of the nearest enclosing rep loop.",
     ref_desc_point: "Draws a point at (x, y).",
     ref_desc_line: "Draws a line passing through (x1, y1) and (x2, y2).",
     ref_desc_seg: "Draws a line segment between (x1, y1) and (x2, y2).",
@@ -80,12 +85,13 @@ export const TRANSLATIONS = {
     ref_poly_adv_intro: "Use Push and Poly (without args) to handle polygons with variable vertex counts.",
     ref_poly_uses_pushed: "(Uses pushed points)",
     // Snippets
-    snippet_groups: "Groups (Test Cases)",
+    snippet_multi_testcases: "Multi-Testcases",
     snippet_points: "Points Cloud",
     snippet_segments: "Line Segments",
     snippet_circles: "Circles",
     snippet_polygon_simple: "Simple Polygon",
     snippet_lines: "Lines",
+    snippet_multi_testcases_eof0: "Multi-Testcases (EOF=0)",
   },
   ja: {
     title: "幾何ビジュアライザ",
@@ -147,6 +153,11 @@ export const TRANSLATIONS = {
     ref_groups: "グループ化 (テストケース)",
     ref_desc_read: "入力データから変数を読み込みます。",
     ref_desc_rep: "インデントされたブロックをN回繰り返します。'rep i N:'のように変数iを指定可能。",
+    ref_desc_if: "条件式(0以外=true)が真ならインデントされたブロックを実行します。",
+    ref_desc_elif: "前のif/elifが偽のときに評価される追加条件です。'else if'も使用できます。",
+    ref_desc_else: "すべての条件が偽のときに実行されるブロックです。",
+    ref_desc_break: "直近のrepループを終了します。",
+    ref_desc_continue: "直近のrepループの次の反復へ進みます。",
     ref_desc_point: "座標(x, y)に点を描画します。",
     ref_desc_line: "(x1, y1)と(x2, y2)を通る直線を描画します。",
     ref_desc_seg: "(x1, y1)と(x2, y2)を結ぶ線分を描画します。",
@@ -166,12 +177,13 @@ export const TRANSLATIONS = {
     ref_poly_adv_intro: "PushとPoly(引数なし)を使用して、頂点数が可変の多角形を描画します。",
     ref_poly_uses_pushed: "(Pushされた点を使用)",
     // Snippets
-    snippet_groups: "グループ (テストケース)",
+    snippet_multi_testcases: "マルチテストケース",
     snippet_points: "点群 (Points Cloud)",
     snippet_segments: "線分 (Line Segments)",
     snippet_circles: "円 (Circles)",
     snippet_polygon_simple: "単純多角形 (Simple Polygon)",
     snippet_lines: "直線 (Lines)",
+    snippet_multi_testcases_eof0: "マルチテストケース (EOF=0)",
   }
 } as const;
 

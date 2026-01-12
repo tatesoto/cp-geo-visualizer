@@ -94,6 +94,27 @@ Optionally, you can add a label string like `TOP` or a color code like `#ff0000`
       Point i i*2
   ```
 
+- **Conditional (If / Elif / Else)**
+  ```
+  if n % 2 == 0:
+      Point n 0
+  elif n % 3 == 0:
+      Point n 10
+  else:
+      Point n 20
+  ```
+  `else if` is also supported as an alias for `elif`.
+
+- **Loop Control (break / continue)**
+  ```
+  rep i 10:
+      if i == 5:
+          break
+      if i % 2 == 0:
+          continue
+      Point i i
+  ```
+
 - **Group**
   ```
   Group 1:

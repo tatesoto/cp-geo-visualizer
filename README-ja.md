@@ -91,6 +91,27 @@
       Point i i*2
   ```
 
+- **条件分岐 (If / Elif / Else)**
+  ```
+  if n % 2 == 0:
+      Point n 0
+  elif n % 3 == 0:
+      Point n 10
+  else:
+      Point n 20
+  ```
+  `elif` の代わりに `else if` も使用できます。
+
+- **ループ制御 (break / continue)**
+  ```
+  rep i 10:
+      if i == 5:
+          break
+      if i % 2 == 0:
+          continue
+      Point i i
+  ```
+
 - **グループ (Group)**
   ```
   Group 1:

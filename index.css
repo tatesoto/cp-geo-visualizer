@@ -33,6 +33,23 @@
         --ring: 222.2 84% 4.9%;
 
         --radius: 0.5rem;
+
+        --font-editor-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        --font-geo-mono: Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+}
+
+@layer components {
+    .font-editor-mono {
+        font-family: var(--font-editor-mono);
+        font-variant-numeric: slashed-zero;
+        font-feature-settings: "zero" 1;
+    }
+
+    .font-geo-mono {
+        font-family: var(--font-geo-mono);
+        font-variant-numeric: slashed-zero;
+        font-feature-settings: "zero" 1;
     }
 }
 

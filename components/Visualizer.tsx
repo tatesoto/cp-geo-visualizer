@@ -115,7 +115,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
           return Math.max(s.p1.x, s.p2.x) >= cullMinX && Math.min(s.p1.x, s.p2.x) <= cullMaxX &&
             Math.max(s.p1.y, s.p2.y) >= cullMinY && Math.min(s.p1.y, s.p2.y) <= cullMaxY;
         case ShapeType.LINE: return true;
-        case ShapeType.POLYGON:
+        case ShapeType.POLYGON: {
           let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
           for (const p of s.points) {
             if (p.x < minX) minX = p.x;
@@ -124,6 +124,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
             if (p.y > maxY) maxY = p.y;
           }
           return maxX >= cullMinX && minX <= cullMaxX && maxY >= cullMinY && minY <= cullMaxY;
+        }
       }
       return true;
     };
@@ -163,10 +164,10 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
 
   }, [lang]);
 
-  const requestRender = () => {
+  const requestRender = useCallback(() => {
     if (requestRef.current) cancelAnimationFrame(requestRef.current);
     requestRef.current = requestAnimationFrame(draw);
-  };
+  }, [draw]);
 
   // --- View Control Logic ---
 
@@ -200,7 +201,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
       scale: scale
     };
     requestRender();
-  }, []);
+  }, [requestRender]);
 
   useImperativeHandle(ref, () => ({
     resetView: () => fitToShapes(),
@@ -242,7 +243,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
       requestRender();
     }
 
-  }, [highlightedShapeId, visibleIdTypes, renderTimeout, activeGroupId, fitToShapes]);
+  }, [highlightedShapeId, visibleIdTypes, renderTimeout, activeGroupId, fitToShapes, requestRender]);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -250,7 +251,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     const resizeObserver = new ResizeObserver(() => requestRender());
     resizeObserver.observe(container);
     return () => resizeObserver.disconnect();
-  }, [draw]);
+  }, [requestRender]);
 
   // --- Event Handlers ---
 
@@ -322,7 +323,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
         zoomHintTimeoutRef.current = null;
       }
     };
-  }, []);
+  }, [requestRender]);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -362,7 +363,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
         canvas.removeEventListener('wheel', handleWheel);
       }
     };
-  }, []);
+  }, [requestRender]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     isDraggingRef.current = true;
@@ -526,7 +527,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
       canvas.removeEventListener('touchmove', handleTouchMove);
       canvas.removeEventListener('touchend', handleTouchEnd);
     };
-  }, []);
+  }, [requestRender]);
 
   return (
     <div
@@ -544,7 +545,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
       />
 
       {/* HUD Info */}
-      <div className="absolute bottom-5 right-5 bg-white/90 backdrop-blur border border-gray-100 shadow-sm rounded-lg px-3 py-2 text-[10px] text-gray-500 font-mono flex gap-4 pointer-events-none">
+      <div className="absolute bottom-5 right-5 bg-white/90 backdrop-blur border border-gray-100 shadow-sm rounded-lg px-3 py-2 text-[10px] text-gray-500 font-geo-mono flex gap-4 pointer-events-none">
         <span className="flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
           {shapes.length} {t(lang, 'objects')}
@@ -558,7 +559,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
       {/* Hover Tooltip */}
       {hoverInfo && (
         <div
-          className="absolute bg-black/90 backdrop-blur text-white text-[10px] px-2 py-1 rounded-md pointer-events-none whitespace-nowrap z-50 font-mono shadow-xl translate-x-3 translate-y-3"
+          className="absolute bg-black/90 backdrop-blur text-white text-[10px] px-2 py-1 rounded-md pointer-events-none whitespace-nowrap z-50 font-geo-mono shadow-xl translate-x-3 translate-y-3"
           style={{ left: hoverInfo.x, top: hoverInfo.y }}
         >
           {hoverInfo.text}

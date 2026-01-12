@@ -75,6 +75,20 @@ const ReferenceModal: React.FC<ReferenceModalProps> = ({ onClose, lang }) => {
                     <div>rep <span className="text-pink-600">[i]</span> <span className="text-blue-600">N</span>:</div>
                     <div className="pl-4 text-gray-400">...</div>
                 </>} desc={t(lang, 'ref_desc_rep')} />
+                <Row syntax={<>
+                    <div>if <span className="text-blue-600">cond</span>:</div>
+                    <div className="pl-4 text-gray-400">...</div>
+                </>} desc={t(lang, 'ref_desc_if')} />
+                <Row syntax={<>
+                    <div>elif <span className="text-blue-600">cond</span>:</div>
+                    <div className="pl-4 text-gray-400">...</div>
+                </>} desc={t(lang, 'ref_desc_elif')} />
+                <Row syntax={<>
+                    <div>else:</div>
+                    <div className="pl-4 text-gray-400">...</div>
+                </>} desc={t(lang, 'ref_desc_else')} />
+                <Row syntax="break" desc={t(lang, 'ref_desc_break')} />
+                <Row syntax="continue" desc={t(lang, 'ref_desc_continue')} />
               </tbody>
             </table>
             

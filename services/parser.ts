@@ -23,12 +23,29 @@ export const KEYWORDS = new Set([
   'text',
   'read',
   'rep',
-  'group'
+  'group',
+  'if',
+  'elif',
+  'else',
+  'break',
+  'continue'
 ]);
 
 // Improved Regex: matches non-whitespace/quotes OR quoted strings
 // Using 'g' flag for stateful exec
 const TOKEN_REGEX = /[^\s"']+|"([^"]*)"|'([^']*)'/g;
+
+class BreakSignal extends Error {
+  constructor() {
+    super('Break');
+  }
+}
+
+class ContinueSignal extends Error {
+  constructor() {
+    super('Continue');
+  }
+}
 
 class ParserContext {
   input: string;
@@ -42,6 +59,9 @@ class ParserContext {
   
   // Group state
   currentGroupId: string | undefined = undefined;
+
+  // Loop depth for break/continue
+  loopDepth: number;
   
   // Lookahead buffer
   currentToken: string | null = null;
@@ -54,6 +74,7 @@ class ParserContext {
     this.pointBuffer = [];
     this.startTime = Date.now();
     this.timeoutMs = timeoutMs;
+    this.loopDepth = 0;
     this.counts = {
       [ShapeType.POINT]: 0,
       [ShapeType.LINE]: 0,
@@ -139,8 +160,9 @@ export const parseInput = (format: string, input: string, timeoutMs: number = 30
   
   try {
     processBlock(rawFormatLines, 0, ctx);
-  } catch (e: any) {
-    return { shapes: [], error: e.message };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    return { shapes: [], error: message };
   }
 
   return { shapes: ctx.shapes, error: null };
@@ -183,48 +205,71 @@ function validateVariableName(name: string) {
     }
 }
 
-function evaluateExpression(expr: string, ctx: ParserContext): number {
+function tokenizeExpression(expr: string): string[] {
     const tokens: string[] = [];
-    const regex = /(\d+(?:\.\d+)?)|([a-zA-Z_][a-zA-Z0-9_]*)|([\+\-\*\/\(\)%])/g;
+    const regex = /[a-zA-Z_][a-zA-Z0-9_]*|\d+(?:\.\d+)?|==|!=|<=|>=|\|\||&&|[+\-*/()%<>!]/g;
     let match;
+    let lastIndex = 0;
     while ((match = regex.exec(expr)) !== null) {
+        if (match.index > lastIndex) {
+            const skipped = expr.slice(lastIndex, match.index);
+            if (skipped.trim() !== '') {
+                throw new Error(`Unexpected token '${skipped.trim()}' in expression "${expr}"`);
+            }
+        }
         tokens.push(match[0]);
+        lastIndex = regex.lastIndex;
     }
-  
+    if (expr.slice(lastIndex).trim() !== '') {
+        throw new Error(`Unexpected token '${expr.slice(lastIndex).trim()}' in expression "${expr}"`);
+    }
+    return tokens;
+}
+
+function evaluateExpression(expr: string, ctx: ParserContext): number {
+    const tokens = tokenizeExpression(expr);
     if (tokens.length === 0) throw new Error("Empty expression");
-  
+
     let pos = 0;
     const peek = () => tokens[pos];
     const consume = () => tokens[pos++];
-  
-    const parseFactor = (): number => {
+    const toBool = (val: number) => val !== 0;
+
+    const parsePrimary = (): number => {
         const token = consume();
         if (!token) throw new Error("Unexpected end of expression");
-  
+
         if (token === '(') {
-            const val = parseExpr(); 
+            const val = parseOr();
             if (consume() !== ')') throw new Error("Expected ')'");
             return val;
         }
-        
-        if (token === '-') {
-            return -parseFactor();
-        }
 
-        if (token === '+') {
-            return parseFactor();
-        }
-  
         return ctx.resolveValue(token);
     }
-  
+
+    const parseUnary = (): number => {
+        const token = peek();
+        if (token === '+' || token === '-') {
+            consume();
+            const val = parseUnary();
+            return token === '-' ? -val : val;
+        }
+        if (token === '!') {
+            consume();
+            const val = parseUnary();
+            return toBool(val) ? 0 : 1;
+        }
+        return parsePrimary();
+    }
+
     const parseTerm = (): number => {
-        let left = parseFactor();
+        let left = parseUnary();
         while (pos < tokens.length) {
             const op = peek();
             if (op === '*' || op === '/' || op === '%') {
                 consume();
-                const right = parseFactor();
+                const right = parseUnary();
                 if (op === '*') left *= right;
                 else if (op === '/') left /= right;
                 else if (op === '%') left %= right;
@@ -234,8 +279,8 @@ function evaluateExpression(expr: string, ctx: ParserContext): number {
         }
         return left;
     }
-  
-    const parseExpr = (): number => {
+
+    const parseAddSub = (): number => {
         let left = parseTerm();
         while (pos < tokens.length) {
             const op = peek();
@@ -250,13 +295,140 @@ function evaluateExpression(expr: string, ctx: ParserContext): number {
         }
         return left;
     }
-  
-    const result = parseExpr();
+
+    const parseComparison = (): number => {
+        let left = parseAddSub();
+        const op = peek();
+        if (op === '==' || op === '!=' || op === '<' || op === '<=' || op === '>' || op === '>=') {
+            consume();
+            const right = parseAddSub();
+            if (op === '==') left = left === right ? 1 : 0;
+            else if (op === '!=') left = left !== right ? 1 : 0;
+            else if (op === '<') left = left < right ? 1 : 0;
+            else if (op === '<=') left = left <= right ? 1 : 0;
+            else if (op === '>') left = left > right ? 1 : 0;
+            else if (op === '>=') left = left >= right ? 1 : 0;
+        }
+        return left;
+    }
+
+    const parseAnd = (): number => {
+        let left = parseComparison();
+        while (pos < tokens.length) {
+            const op = peek();
+            if (op === '&&') {
+                consume();
+                const right = parseComparison();
+                left = (toBool(left) && toBool(right)) ? 1 : 0;
+            } else {
+                break;
+            }
+        }
+        return left;
+    }
+
+    const parseOr = (): number => {
+        let left = parseAnd();
+        while (pos < tokens.length) {
+            const op = peek();
+            if (op === '||') {
+                consume();
+                const right = parseAnd();
+                left = (toBool(left) || toBool(right)) ? 1 : 0;
+            } else {
+                break;
+            }
+        }
+        return left;
+    }
+
+    const result = parseOr();
     if (pos < tokens.length) {
-        // Did not consume all tokens, meaning the expression is invalid or has extra stuff
         throw new Error(`Unexpected token '${tokens[pos]}' in expression "${expr}"`);
     }
     return result;
+}
+
+function extractIndentedBlock(lines: string[], startIndex: number, parentIndent: number, header: string) {
+    const blockLines: string[] = [];
+    let j = startIndex;
+    let blockIndent = -1;
+
+    while (j < lines.length) {
+        const nextLine = lines[j];
+        const nextContent = stripComment(nextLine);
+        const nextTrimmed = nextContent.trim();
+
+        if (!nextTrimmed) {
+            blockLines.push(nextLine);
+            j++;
+            continue;
+        }
+
+        const nextIndent = getIndent(nextLine);
+        if (blockIndent === -1) {
+            if (nextIndent <= parentIndent) break;
+            blockIndent = nextIndent;
+        }
+
+        if (nextIndent >= blockIndent) {
+            blockLines.push(nextLine);
+            j++;
+        } else {
+            break;
+        }
+    }
+
+    if (blockLines.length === 0 || blockIndent === -1) {
+        throw new Error(`Indentation Error: Expected an indented block after "${header}"`);
+    }
+
+    return { blockLines, blockIndent, nextIndex: j };
+}
+
+type ConditionalHeader = { kind: 'if' | 'elif' | 'else', condition?: string };
+
+function parseConditionalHeader(trimmed: string): ConditionalHeader | null {
+    const elseIfMatch = trimmed.match(/^else\s+if\b(.*)$/i);
+    if (elseIfMatch) {
+        return parseConditionalWithCondition(elseIfMatch[1], 'elif', 'else if');
+    }
+
+    const ifMatch = trimmed.match(/^if\b(.*)$/i);
+    if (ifMatch) {
+        return parseConditionalWithCondition(ifMatch[1], 'if', 'if');
+    }
+
+    const elifMatch = trimmed.match(/^elif\b(.*)$/i);
+    if (elifMatch) {
+        return parseConditionalWithCondition(elifMatch[1], 'elif', 'elif');
+    }
+
+    const elseMatch = trimmed.match(/^else\b(.*)$/i);
+    if (elseMatch) {
+        const rest = elseMatch[1].trim();
+        if (!rest.endsWith(':')) {
+            throw new Error(`Syntax Error: else statement must end with ':' (e.g. "else:")`);
+        }
+        if (rest.trim() !== ':') {
+            throw new Error(`Syntax Error: else statement cannot have a condition (use "else if" or "elif").`);
+        }
+        return { kind: 'else' };
+    }
+
+    return null;
+}
+
+function parseConditionalWithCondition(rest: string, kind: 'if' | 'elif', label: string): ConditionalHeader {
+    let content = rest.trim();
+    if (!content.endsWith(':')) {
+        throw new Error(`Syntax Error: ${label} statement must end with ':' (e.g. "${label} x > 0:")`);
+    }
+    content = content.slice(0, -1).trim();
+    if (!content) {
+        throw new Error(`Syntax Error: ${label} statement requires a condition.`);
+    }
+    return { kind, condition: content };
 }
 
 function processBlock(lines: string[], baseIndent: number, ctx: ParserContext) {
@@ -309,59 +481,50 @@ function processBlock(lines: string[], baseIndent: number, ctx: ParserContext) {
         }
       }
       
-      const loopBlockLines: string[] = [];
-      let j = i + 1;
-      let blockIndent = -1;
-
-      while (j < lines.length) {
-        const nextLine = lines[j];
-        const nextContent = stripComment(nextLine);
-        const nextTrimmed = nextContent.trim();
-        
-        if (!nextTrimmed) { 
-           loopBlockLines.push(nextLine); 
-           j++; 
-           continue; 
-        }
-
-        const nextIndent = getIndent(nextLine);
-        if (blockIndent === -1) {
-            if (nextIndent <= currentIndent) break;
-            blockIndent = nextIndent;
-        }
-
-        if (nextIndent >= blockIndent) {
-          loopBlockLines.push(nextLine);
-          j++;
-        } else {
-          break;
-        }
-      }
-
-      if (loopBlockLines.length === 0 || blockIndent === -1) {
-          throw new Error(`Indentation Error: Expected an indented block after "${trimmed}"`);
-      }
+      const { blockLines: loopBlockLines, blockIndent, nextIndex } = extractIndentedBlock(lines, i + 1, currentIndent, trimmed);
 
       const initialVars = Array.from(ctx.variables.keys());
-      
-      for (let k = 0; k < count; k++) {
-        ctx.checkTimeout();
-        
-        if (loopVar) {
-            ctx.variables.set(loopVar, k);
-        }
 
-        processBlock(loopBlockLines, blockIndent, ctx);
-        
-        // Restore variable state
-        if (ctx.variables.size > initialVars.length) {
-             const currentKeys = Array.from(ctx.variables.keys());
-             for (let vIndex = initialVars.length; vIndex < currentKeys.length; vIndex++) {
-                 ctx.variables.delete(currentKeys[vIndex]);
-             }
-        }
+      ctx.loopDepth++;
+      try {
+          for (let k = 0; k < count; k++) {
+              ctx.checkTimeout();
+              
+              if (loopVar) {
+                  ctx.variables.set(loopVar, k);
+              }
+
+              let shouldBreak = false;
+              let shouldContinue = false;
+
+              try {
+                  processBlock(loopBlockLines, blockIndent, ctx);
+              } catch (e) {
+                  if (e instanceof BreakSignal) {
+                      shouldBreak = true;
+                  } else if (e instanceof ContinueSignal) {
+                      shouldContinue = true;
+                  } else {
+                      throw e;
+                  }
+              }
+              
+              // Restore variable state
+              if (ctx.variables.size > initialVars.length) {
+                  const currentKeys = Array.from(ctx.variables.keys());
+                  for (let vIndex = initialVars.length; vIndex < currentKeys.length; vIndex++) {
+                      ctx.variables.delete(currentKeys[vIndex]);
+                  }
+              }
+
+              if (shouldBreak) break;
+              if (shouldContinue) continue;
+          }
+      } finally {
+          ctx.loopDepth--;
       }
-      i = j;
+
+      i = nextIndex;
 
     } else if (lowerTrimmed.startsWith('group ')) {
         // Parse Group statement: Group [id]:
@@ -387,44 +550,70 @@ function processBlock(lines: string[], baseIndent: number, ctx: ParserContext) {
         const prevGroupId = ctx.currentGroupId;
         ctx.currentGroupId = groupId;
 
-        // Extract Block
-        const blockLines: string[] = [];
-        let j = i + 1;
-        let blockIndent = -1;
-
-        while (j < lines.length) {
-            const nextLine = lines[j];
-            const nextContent = stripComment(nextLine);
-            const nextTrimmed = nextContent.trim();
-            
-            if (!nextTrimmed) { 
-               blockLines.push(nextLine); 
-               j++; 
-               continue; 
-            }
-
-            const nextIndent = getIndent(nextLine);
-            if (blockIndent === -1) {
-                if (nextIndent <= currentIndent) break;
-                blockIndent = nextIndent;
-            }
-
-            if (nextIndent >= blockIndent) {
-                blockLines.push(nextLine);
-                j++;
-            } else {
-                break;
-            }
-        }
-
-        if (blockLines.length === 0 || blockIndent === -1) {
-             throw new Error(`Indentation Error: Expected an indented block after "${trimmed}"`);
-        }
+        const { blockLines, blockIndent, nextIndex } = extractIndentedBlock(lines, i + 1, currentIndent, trimmed);
 
         processBlock(blockLines, blockIndent, ctx);
         
         ctx.currentGroupId = prevGroupId;
+        i = nextIndex;
+
+    } else if (/^if\b/i.test(trimmed)) {
+        // Parse if/else-if/else chain
+        let j = i;
+        let executed = false;
+
+        while (j < lines.length) {
+            const headerLine = lines[j];
+            const headerContent = stripComment(headerLine);
+            const headerTrimmed = headerContent.trim();
+            if (!headerTrimmed) {
+                j++;
+                continue;
+            }
+
+            const header = parseConditionalHeader(headerTrimmed);
+            if (!header) break;
+            if (j !== i && header.kind === 'if') break;
+
+            const { blockLines, blockIndent, nextIndex } = extractIndentedBlock(lines, j + 1, currentIndent, headerTrimmed);
+
+            if (!executed) {
+                if (header.kind === 'else') {
+                    processBlock(blockLines, blockIndent, ctx);
+                    executed = true;
+                } else if (header.condition) {
+                    const condVal = evaluateExpression(header.condition, ctx);
+                    if (condVal !== 0) {
+                        processBlock(blockLines, blockIndent, ctx);
+                        executed = true;
+                    }
+                }
+            }
+
+            j = nextIndex;
+
+            if (header.kind === 'else') break;
+        }
+
         i = j;
+
+    } else if (/^elif\b/i.test(trimmed) || /^else\b/i.test(trimmed)) {
+        if (/^else\s+if\b/i.test(trimmed)) {
+            throw new Error(`Syntax Error: 'else if' without matching 'if'.`);
+        }
+        const keyword = trimmed.toLowerCase().startsWith('elif') ? 'elif' : 'else';
+        throw new Error(`Syntax Error: '${keyword}' without matching 'if'.`);
+
+    } else if (lowerTrimmed === 'break' || lowerTrimmed === 'continue') {
+        if (ctx.loopDepth <= 0) {
+            throw new Error(`Syntax Error: '${lowerTrimmed}' used outside of a loop.`);
+        }
+        if (lowerTrimmed === 'break') throw new BreakSignal();
+        throw new ContinueSignal();
+
+    } else if (lowerTrimmed.startsWith('break ') || lowerTrimmed.startsWith('continue ')) {
+        const keyword = lowerTrimmed.startsWith('break') ? 'break' : 'continue';
+        throw new Error(`Syntax Error: '${keyword}' does not take any arguments.`);
 
     } else {
       parseCommand(trimmed, ctx);
