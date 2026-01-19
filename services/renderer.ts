@@ -277,12 +277,19 @@ export const drawShape = (
 
 export const drawTimeoutIndicator = (ctx: CanvasRenderingContext2D, height: number, lang: Language) => {
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.fillRect(0, height - 30, 360, 30);
-    ctx.fillStyle = '#ef4444';
+    const message = t(lang, 'renderingTimeout');
+    const rectHeight = 30;
+    const paddingX = 10;
     ctx.font = 'bold 12px "Inter", sans-serif';
+    const textWidth = ctx.measureText(message).width;
+    const maxWidth = ctx.canvas.width;
+    const rectWidth = Math.min(maxWidth, textWidth + paddingX * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.fillRect(0, height - rectHeight, rectWidth, rectHeight);
+    ctx.fillStyle = '#ef4444';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
-    ctx.fillText(t(lang, 'renderingTimeout'), 10, height - 15);
+    const maxTextWidth = Math.max(0, rectWidth - paddingX * 2);
+    ctx.fillText(message, paddingX, height - rectHeight / 2, maxTextWidth);
     ctx.restore();
 };

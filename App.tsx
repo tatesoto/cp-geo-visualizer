@@ -9,8 +9,10 @@ import ReferenceModal from './components/ReferenceModal';
 import { ShapeType, AppConfig } from './types';
 import { useGeometryData } from './hooks/useGeometryData';
 import { useImageExport } from './hooks/useImageExport';
+import { t } from './constants/translations';
 
 function App() {
+  const OBJECT_LIST_WARN_THRESHOLD = 1000;
   // Configuration State
   const [config, setConfig] = useState<AppConfig>({
     executionTimeout: 3000,
@@ -91,6 +93,31 @@ function App() {
     }));
   };
 
+  const getObjectListCount = () => {
+    if (!activeGroupId) return parsedShapes.length;
+    let count = 0;
+    for (const shape of parsedShapes) {
+      if (shape.groupId === activeGroupId) count += 1;
+    }
+    return count;
+  };
+
+  const handleToggleObjectList = () => {
+    if (isObjectListOpen) {
+      setIsObjectListOpen(false);
+      return;
+    }
+    const count = getObjectListCount();
+    if (count >= OBJECT_LIST_WARN_THRESHOLD) {
+      const countLabel = config.language === 'ja'
+        ? `${count}${t(config.language, 'objects')}`
+        : `${count} ${t(config.language, 'objects')}`;
+      const confirmMessage = `${t(config.language, 'objectListHeavyConfirm')} (${countLabel})`;
+      if (!window.confirm(confirmMessage)) return;
+    }
+    setIsObjectListOpen(true);
+  };
+
   return (
     <div className="flex flex-col h-screen supports-[height:100svh]:h-[100svh] bg-gray-50 text-gray-900 font-sans fixed inset-0 overflow-hidden">
       <Header
@@ -117,6 +144,9 @@ function App() {
             inputText={inputText}
             setInputText={setInputText}
             onParse={() => {
+              if (isObjectListOpen) {
+                setIsObjectListOpen(false);
+              }
               handleParse();
               // On mobile, auto-switch to visualizer on parse if successful (or even if not, to show error? No, error is in editor)
               if (window.innerWidth < 768) {
@@ -153,7 +183,7 @@ function App() {
               activeGroupId={activeGroupId}
               onSelectGroup={setActiveGroupId}
               isObjectListOpen={isObjectListOpen}
-              onToggleObjectList={() => setIsObjectListOpen(!isObjectListOpen)}
+              onToggleObjectList={handleToggleObjectList}
               onSaveImage={handleSaveImage}
               onShareBlob={generateImageBlob}
               isVisible={areControlsVisible}
