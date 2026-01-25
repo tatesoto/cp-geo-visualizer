@@ -1,15 +1,16 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import Visualizer, { VisualizerHandle } from './components/Visualizer';
 import ObjectList from './components/ObjectList';
 import Header from './components/Header';
-import EditorPanel from './components/EditorPanel';
 import VisualizerControls from './components/VisualizerControls';
-import SettingsModal from './components/SettingsModal';
-import ReferenceModal from './components/ReferenceModal';
 import { ShapeType, AppConfig } from './types';
 import { useGeometryData } from './hooks/useGeometryData';
 import { useImageExport } from './hooks/useImageExport';
 import { t } from './constants/translations';
+
+const EditorPanel = lazy(() => import('./components/EditorPanel'));
+const SettingsModal = lazy(() => import('./components/SettingsModal'));
+const ReferenceModal = lazy(() => import('./components/ReferenceModal'));
 
 function App() {
   const OBJECT_LIST_WARN_THRESHOLD = 1000;
@@ -17,7 +18,8 @@ function App() {
   const [config, setConfig] = useState<AppConfig>({
     executionTimeout: 3000,
     renderTimeout: 200,
-    language: 'en'
+    language: 'en',
+    idIndexBase: 0
   } as AppConfig);
 
   // Custom Hooks for Data & Actions
@@ -136,27 +138,35 @@ function App() {
             ${isEditorOpen ? 'md:w-auto' : 'hidden md:flex md:w-auto'} 
             absolute inset-0 md:static z-10 bg-white md:bg-transparent
         `}>
-          <EditorPanel
-            isOpen={isEditorOpen}
-            onToggle={() => setIsEditorOpen(!isEditorOpen)}
-            formatText={formatText}
-            setFormatText={setFormatText}
-            inputText={inputText}
-            setInputText={setInputText}
-            onParse={() => {
-              if (isObjectListOpen) {
-                setIsObjectListOpen(false);
-              }
-              handleParse();
-              // On mobile, auto-switch to visualizer on parse if successful (or even if not, to show error? No, error is in editor)
-              if (window.innerWidth < 768) {
-                setActiveMobileTab('visualizer');
-              }
-            }}
-            error={error}
-            isParsing={isParsing}
-            lang={config.language}
-          />
+          <Suspense
+            fallback={(
+              <div className="flex-1 flex items-center justify-center text-xs text-gray-400">
+                {t(config.language, 'processing')}
+              </div>
+            )}
+          >
+            <EditorPanel
+              isOpen={isEditorOpen}
+              onToggle={() => setIsEditorOpen(!isEditorOpen)}
+              formatText={formatText}
+              setFormatText={setFormatText}
+              inputText={inputText}
+              setInputText={setInputText}
+              onParse={() => {
+                if (isObjectListOpen) {
+                  setIsObjectListOpen(false);
+                }
+                handleParse();
+                // On mobile, auto-switch to visualizer on parse if successful (or even if not, to show error? No, error is in editor)
+                if (window.innerWidth < 768) {
+                  setActiveMobileTab('visualizer');
+                }
+              }}
+              error={error}
+              isParsing={isParsing}
+              lang={config.language}
+            />
+          </Suspense>
         </div>
 
         {/* Right Panel: Visualization & Object List */}
@@ -172,12 +182,15 @@ function App() {
               visibleIdTypes={visibleIdTypes}
               activeGroupId={activeGroupId}
               renderTimeout={config.renderTimeout}
+              idIndexBase={config.idIndexBase}
               lang={config.language}
             />
 
             <VisualizerControls
               visibleIdTypes={visibleIdTypes}
               onToggleIdType={toggleIdType}
+              idIndexBase={config.idIndexBase}
+              onChangeIdIndexBase={(base) => setConfig(prev => ({ ...prev, idIndexBase: base }))}
               onResetView={() => visualizerRef.current?.resetView()}
               availableGroups={availableGroups}
               activeGroupId={activeGroupId}
@@ -202,6 +215,7 @@ function App() {
               activeGroupId={activeGroupId}
               availableGroups={availableGroups}
               onSelectGroup={setActiveGroupId}
+              idIndexBase={config.idIndexBase}
               lang={config.language}
             />
           )}
@@ -233,18 +247,22 @@ function App() {
 
       {/* Modals */}
       {isSettingsOpen && (
-        <SettingsModal
-          config={config}
-          onSave={setConfig}
-          onClose={() => setIsSettingsOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <SettingsModal
+            config={config}
+            onSave={setConfig}
+            onClose={() => setIsSettingsOpen(false)}
+          />
+        </Suspense>
       )}
 
       {isReferenceOpen && (
-        <ReferenceModal
-          onClose={() => setIsReferenceOpen(false)}
-          lang={config.language}
-        />
+        <Suspense fallback={null}>
+          <ReferenceModal
+            onClose={() => setIsReferenceOpen(false)}
+            lang={config.language}
+          />
+        </Suspense>
       )}
     </div>
   );

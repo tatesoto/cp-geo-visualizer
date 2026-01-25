@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowsPointingOutIcon, ListBulletIcon, ShareIcon, ArrowDownTrayIcon, AdjustmentsHorizontalIcon, EyeSlashIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
-import { ShapeType, Language } from '../types';
+import { ShapeType, Language, IdIndexBase } from '../types';
 import { t } from '../constants/translations';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from './ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -8,6 +8,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 interface VisualizerControlsProps {
     visibleIdTypes: ShapeType[];
     onToggleIdType: (type: ShapeType) => void;
+    idIndexBase: IdIndexBase;
+    onChangeIdIndexBase: (base: IdIndexBase) => void;
     onResetView: () => void;
     availableGroups: string[];
     activeGroupId: string | null;
@@ -24,6 +26,8 @@ interface VisualizerControlsProps {
 const VisualizerControls: React.FC<VisualizerControlsProps> = ({
     visibleIdTypes,
     onToggleIdType,
+    idIndexBase,
+    onChangeIdIndexBase,
     onResetView,
     availableGroups,
     activeGroupId,
@@ -182,11 +186,11 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
                                 <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform ${isIdOpen ? 'rotate-180' : ''}`} />
                             </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                            align="start"
-                            className="min-w-[180px] max-w-[calc(100vw-32px)] p-2"
-                        >
-                            <div className="flex flex-wrap gap-0.5">
+                    <DropdownMenuContent
+                        align="start"
+                        className="min-w-[180px] max-w-[calc(100vw-32px)] p-2"
+                    >
+                        <div className="flex flex-wrap gap-0.5">
                                 {ID_TOGGLE_OPTIONS.map((opt) => {
                                     const isActive = visibleIdTypes.includes(opt.type);
                                     return (
@@ -205,6 +209,41 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
                                         </button>
                                     );
                                 })}
+                            </div>
+                            <DropdownMenuSeparator />
+                            <div className="space-y-1">
+                                <div className="px-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                    {t(lang, 'idIndexing')}
+                                </div>
+                                <div className="flex gap-1">
+                                    <button
+                                        onClick={() => onChangeIdIndexBase(0)}
+                                        className={`
+                                            flex-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-colors
+                                            ${idIndexBase === 0
+                                                ? 'bg-black text-white'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
+                                        `}
+                                        title={t(lang, 'idIndexingZero')}
+                                    >
+                                        0-indexed
+                                    </button>
+                                    <button
+                                        onClick={() => onChangeIdIndexBase(1)}
+                                        className={`
+                                            flex-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-colors
+                                            ${idIndexBase === 1
+                                                ? 'bg-black text-white'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
+                                        `}
+                                        title={t(lang, 'idIndexingOne')}
+                                    >
+                                        1-indexed
+                                    </button>
+                                </div>
+                                {/* <div className="px-1 text-[10px] text-gray-400">
+                                    {t(lang, 'idIndexingDesc')}
+                                </div> */}
                             </div>
                         </DropdownMenuContent>
                     </DropdownMenu>
