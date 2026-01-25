@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Shape, ShapeType, Language } from '../types';
+import { Shape, ShapeType, Language, IdIndexBase } from '../types';
 import { ChevronRightIcon, ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { t } from '../constants/translations';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from './ui/select';
 import { ScrollArea } from './ui/scroll-area';
+import { formatShapeId } from '../utils/formatId';
 
 interface ObjectListProps {
   shapes: Shape[];
@@ -13,6 +14,7 @@ interface ObjectListProps {
   activeGroupId: string | null;
   availableGroups: string[];
   onSelectGroup: (groupId: string | null) => void;
+  idIndexBase: IdIndexBase;
   lang: Language;
 }
 
@@ -20,12 +22,14 @@ const VirtualSection = ({
   shapes,
   highlightedShapeId,
   onSelectShape,
-  getInfo
+  getInfo,
+  formatId
 }: {
   shapes: Shape[],
   highlightedShapeId: string | null,
   onSelectShape: (id: string | null) => void,
-  getInfo: (shape: Shape) => string
+  getInfo: (shape: Shape) => string,
+  formatId: (id: string) => string
 }) => {
   return (
     <div className="bg-white">
@@ -46,7 +50,7 @@ const VirtualSection = ({
           />
           <div className="flex-1 min-w-0 flex items-center justify-between">
             <span className={`text-[11px] font-mono truncate ${highlightedShapeId === shape.id ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>
-              {shape.id}
+              {formatId(shape.id)}
             </span>
             <div className="flex items-center gap-2">
               {shape.groupId && (
@@ -74,6 +78,7 @@ const ObjectList: React.FC<ObjectListProps> = ({
   activeGroupId,
   availableGroups,
   onSelectGroup,
+  idIndexBase,
   lang
 }) => {
   const ALL_GROUP_VALUE = '__all__';
@@ -116,6 +121,8 @@ const ObjectList: React.FC<ObjectListProps> = ({
       default: return '';
     }
   };
+
+  const formatId = (id: string) => formatShapeId(id, idIndexBase);
 
   const getTypeLabel = (type: ShapeType) => {
     switch (type) {
@@ -268,6 +275,7 @@ const ObjectList: React.FC<ObjectListProps> = ({
                           highlightedShapeId={highlightedShapeId}
                           onSelectShape={onSelectShape}
                           getInfo={getInfo}
+                          formatId={formatId}
                         />
                       </div>
                     )}

@@ -55,6 +55,8 @@ export interface TextShape extends BaseShape {
 
 export type Shape = PointShape | LineShape | SegmentShape | CircleShape | PolygonShape | TextShape;
 
+export type IdIndexBase = 0 | 1;
+
 export interface Viewport {
   centerX: number;
   centerY: number;
@@ -72,4 +74,5 @@ export interface AppConfig {
   executionTimeout: number;
   renderTimeout: number;
   language: Language;
+  idIndexBase: IdIndexBase;
 }
