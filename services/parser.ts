@@ -21,6 +21,7 @@ export const KEYWORDS = new Set([
   'poly',
   'push',
   'text',
+  'select',
   'read',
   'rep',
   'group',
@@ -51,9 +52,11 @@ class ParserContext {
   input: string;
   regex: RegExp;
   variables: Map<string, number>;
+  keyedShapes: Map<string, Shape>;
   shapes: Shape[];
   pointBuffer: {x: number, y: number}[];
   counts: Record<ShapeType, number>;
+  selectCount: number;
   startTime: number;
   timeoutMs: number;
   
@@ -70,8 +73,10 @@ class ParserContext {
     this.input = input;
     this.regex = new RegExp(TOKEN_REGEX); // New instance to manage lastIndex
     this.variables = new Map();
+    this.keyedShapes = new Map();
     this.shapes = [];
     this.pointBuffer = [];
+    this.selectCount = 0;
     this.startTime = Date.now();
     this.timeoutMs = timeoutMs;
     this.loopDepth = 0;
@@ -670,7 +675,7 @@ function parseCommand(line: string, ctx: ParserContext) {
       throw new Error(`Syntax Error: Unknown command '${parts[0]}'`);
   }
 
-  executeShapeCommand(command, args, ctx);
+  executeShapeCommand(command, parseShapeArgs(args, ctx), ctx);
 }
 
 function processArg(p: string, ctx: ParserContext): string | number {
@@ -691,23 +696,181 @@ function processArg(p: string, ctx: ParserContext): string | number {
     }
 }
 
-function executeShapeCommand(command: string, args: (string|number)[], ctx: ParserContext) {
+type Coordinate = { x: number; y: number };
+
+type CoordinateItem =
+  | { kind: 'number'; value: number }
+  | { kind: 'coordinates'; value: Coordinate[] };
+
+interface ParsedShapeArgs {
+  color?: string;
+  label?: string;
+  key?: string;
+  numbers: number[];
+  coordinateItems: CoordinateItem[];
+  referencedShapes: Shape[];
+  hasReferences: boolean;
+}
+
+function resolveKeyToken(raw: string, ctx: ParserContext): string {
+    if (raw.length === 0) {
+        throw new Error('Syntax Error: key cannot be empty.');
+    }
+    try {
+        return String(evaluateExpression(raw, ctx));
+    } catch {
+        return raw;
+    }
+}
+
+function shapeToCoordinates(shape: Shape): Coordinate[] {
+    switch (shape.type) {
+        case ShapeType.POINT:
+        case ShapeType.CIRCLE:
+        case ShapeType.TEXT:
+            return [{ x: shape.x, y: shape.y }];
+        case ShapeType.LINE:
+        case ShapeType.SEGMENT:
+            return [shape.p1, shape.p2];
+        case ShapeType.POLYGON:
+            return shape.points;
+    }
+}
+
+function resolveShapeByKey(raw: string, ctx: ParserContext): Shape {
+    const key = resolveKeyToken(raw, ctx);
+    const shape = ctx.keyedShapes.get(key);
+    if (!shape) {
+        throw new Error(`Undefined geometry key: '${key}'`);
+    }
+    return shape;
+}
+
+function parseShapeArgs(args: (string | number)[], ctx: ParserContext): ParsedShapeArgs {
+  const parsed: ParsedShapeArgs = {
+      numbers: [],
+      coordinateItems: [],
+      referencedShapes: [],
+      hasReferences: false,
+  };
+
+  for (const a of args) {
+      if (typeof a === 'number') {
+          parsed.numbers.push(a);
+          parsed.coordinateItems.push({ kind: 'number', value: a });
+          continue;
+      }
+
+      if (a.startsWith('key=')) {
+          parsed.key = resolveKeyToken(a.slice(4), ctx);
+          continue;
+      }
+
+      if (a.startsWith('@')) {
+          parsed.hasReferences = true;
+          const shape = resolveShapeByKey(a.slice(1), ctx);
+          parsed.referencedShapes.push(shape);
+          parsed.coordinateItems.push({ kind: 'coordinates', value: shapeToCoordinates(shape) });
+          continue;
+      }
+
+      if (a.startsWith('#')) parsed.color = a;
+      else parsed.label = a;
+  }
+
+  return parsed;
+}
+
+function splitNumericParams(items: CoordinateItem[], paramCount: number): { coordinateItems: CoordinateItem[]; params: number[] } {
+    if (paramCount === 0) return { coordinateItems: items, params: [] };
+
+    const coordinateItems = items.slice();
+    const params: number[] = [];
+
+    for (let i = coordinateItems.length - 1; i >= 0 && params.length < paramCount; i--) {
+        const item = coordinateItems[i];
+        if (item.kind === 'number') {
+            params.unshift(item.value);
+            coordinateItems.splice(i, 1);
+        }
+    }
+
+    if (params.length !== paramCount) {
+        throw new Error(`Geometry reference arity mismatch: expected ${paramCount} numeric parameter(s).`);
+    }
+
+    return { coordinateItems, params };
+}
+
+function expandCoordinateItems(items: CoordinateItem[]): Coordinate[] {
+    const coordinates: Coordinate[] = [];
+    const pendingNumbers: number[] = [];
+
+    const flushPendingNumbers = () => {
+        if (pendingNumbers.length % 2 !== 0) {
+            throw new Error('Geometry reference arity mismatch: coordinates must be provided as x y pairs.');
+        }
+        for (let i = 0; i < pendingNumbers.length; i += 2) {
+            coordinates.push({ x: pendingNumbers[i], y: pendingNumbers[i + 1] });
+        }
+        pendingNumbers.length = 0;
+    };
+
+    for (const item of items) {
+        if (item.kind === 'number') {
+            pendingNumbers.push(item.value);
+        } else {
+            flushPendingNumbers();
+            coordinates.push(...item.value);
+        }
+    }
+
+    flushPendingNumbers();
+    return coordinates;
+}
+
+function getReferencedCoordinates(args: ParsedShapeArgs, expectedCount: number, numericParamCount = 0): { coordinates: Coordinate[]; params: number[] } {
+    const { coordinateItems, params } = splitNumericParams(args.coordinateItems, numericParamCount);
+    const coordinates = expandCoordinateItems(coordinateItems);
+    if (coordinates.length !== expectedCount) {
+        throw new Error(`Geometry reference arity mismatch: expected ${expectedCount} coordinate(s), got ${coordinates.length}.`);
+    }
+    return { coordinates, params };
+}
+
+function getReferencedPolygonCoordinates(args: ParsedShapeArgs): Coordinate[] {
+    const coordinates = expandCoordinateItems(args.coordinateItems);
+    if (coordinates.length < 3) {
+        throw new Error(`Geometry reference arity mismatch: polygon requires at least 3 coordinates, got ${coordinates.length}.`);
+    }
+    return coordinates;
+}
+
+function registerShape(ctx: ParserContext, shape: Shape, key: string | undefined) {
+    if (key !== undefined) {
+        if (ctx.keyedShapes.has(key)) {
+            throw new Error(`Duplicate geometry key: '${key}'`);
+        }
+        shape.key = key;
+    }
+
+    ctx.shapes.push(shape);
+
+    if (key !== undefined) {
+        ctx.keyedShapes.set(key, shape);
+    }
+}
+
+function executeShapeCommand(command: string, parsedArgs: ParsedShapeArgs, ctx: ParserContext) {
   let color: string | undefined;
   let label: string | undefined;
   const nums: number[] = [];
   const strs: string[] = [];
 
-  for (const a of args) {
-      if (typeof a === 'number') {
-          nums.push(a);
-      } else if (typeof a === 'string') {
-          if (a.startsWith('#')) color = a;
-          else {
-              label = a;
-              strs.push(a);
-          }
-      }
-  }
+  color = parsedArgs.color;
+  label = parsedArgs.label;
+  nums.push(...parsedArgs.numbers);
+  if (label) strs.push(label);
 
   // Auto assign color if not specified
   if (!color) {
@@ -716,35 +879,67 @@ function executeShapeCommand(command: string, args: (string|number)[], ctx: Pars
   
   const groupId = ctx.currentGroupId;
 
-  if (command === 'point') {
-    if (nums.length >= 2) {
+  if (command === 'select') {
+    if (parsedArgs.referencedShapes.length === 0) {
+      throw new Error(`Syntax Error: Select requires at least one geometry reference (e.g. "Select @i").`);
+    }
+    for (const shape of parsedArgs.referencedShapes) {
+      shape.selected = true;
+      if (!shape.selectOrders) shape.selectOrders = [];
+      shape.selectOrders.push(ctx.selectCount++);
+    }
+  } else if (command === 'point') {
+    if (parsedArgs.hasReferences) {
+      const { coordinates } = getReferencedCoordinates(parsedArgs, 1);
       const id = ctx.generateId(ShapeType.POINT);
-      ctx.shapes.push({ id, type: ShapeType.POINT, x: nums[0], y: nums[1], color, label, groupId });
+      registerShape(ctx, { id, type: ShapeType.POINT, x: coordinates[0].x, y: coordinates[0].y, color, label, groupId }, parsedArgs.key);
+    } else if (nums.length >= 2) {
+      const id = ctx.generateId(ShapeType.POINT);
+      registerShape(ctx, { id, type: ShapeType.POINT, x: nums[0], y: nums[1], color, label, groupId }, parsedArgs.key);
     }
   } else if (command === 'push') {
-    if (nums.length >= 2) {
+    if (parsedArgs.hasReferences) {
+      const { coordinates } = getReferencedCoordinates(parsedArgs, 1);
+      ctx.pointBuffer.push(coordinates[0]);
+    } else if (nums.length >= 2) {
       ctx.pointBuffer.push({ x: nums[0], y: nums[1] });
     }
   } else if (command === 'line') {
-    if (nums.length >= 4) {
+    if (parsedArgs.hasReferences) {
+      const { coordinates } = getReferencedCoordinates(parsedArgs, 2);
       const id = ctx.generateId(ShapeType.LINE);
-      ctx.shapes.push({ id, type: ShapeType.LINE, p1: { x: nums[0], y: nums[1] }, p2: { x: nums[2], y: nums[3] }, color, label, groupId });
+      registerShape(ctx, { id, type: ShapeType.LINE, p1: coordinates[0], p2: coordinates[1], color, label, groupId }, parsedArgs.key);
+    } else if (nums.length >= 4) {
+      const id = ctx.generateId(ShapeType.LINE);
+      registerShape(ctx, { id, type: ShapeType.LINE, p1: { x: nums[0], y: nums[1] }, p2: { x: nums[2], y: nums[3] }, color, label, groupId }, parsedArgs.key);
     }
   } else if (command === 'seg') {
-    if (nums.length >= 4) {
+    if (parsedArgs.hasReferences) {
+      const { coordinates } = getReferencedCoordinates(parsedArgs, 2);
       const id = ctx.generateId(ShapeType.SEGMENT);
-      ctx.shapes.push({ id, type: ShapeType.SEGMENT, p1: { x: nums[0], y: nums[1] }, p2: { x: nums[2], y: nums[3] }, color, label, groupId });
+      registerShape(ctx, { id, type: ShapeType.SEGMENT, p1: coordinates[0], p2: coordinates[1], color, label, groupId }, parsedArgs.key);
+    } else if (nums.length >= 4) {
+      const id = ctx.generateId(ShapeType.SEGMENT);
+      registerShape(ctx, { id, type: ShapeType.SEGMENT, p1: { x: nums[0], y: nums[1] }, p2: { x: nums[2], y: nums[3] }, color, label, groupId }, parsedArgs.key);
     }
   } else if (command === 'circle') {
-    if (nums.length >= 3) {
+    if (parsedArgs.hasReferences) {
+      const { coordinates, params } = getReferencedCoordinates(parsedArgs, 1, 1);
       const id = ctx.generateId(ShapeType.CIRCLE);
-      ctx.shapes.push({ id, type: ShapeType.CIRCLE, x: nums[0], y: nums[1], r: nums[2], color, label, groupId });
+      registerShape(ctx, { id, type: ShapeType.CIRCLE, x: coordinates[0].x, y: coordinates[0].y, r: params[0], color, label, groupId }, parsedArgs.key);
+    } else if (nums.length >= 3) {
+      const id = ctx.generateId(ShapeType.CIRCLE);
+      registerShape(ctx, { id, type: ShapeType.CIRCLE, x: nums[0], y: nums[1], r: nums[2], color, label, groupId }, parsedArgs.key);
     }
   } else if (command === 'poly') {
-    if (nums.length === 0) {
+    if (parsedArgs.hasReferences) {
+      const points = getReferencedPolygonCoordinates(parsedArgs);
+      const id = ctx.generateId(ShapeType.POLYGON);
+      registerShape(ctx, { id, type: ShapeType.POLYGON, points, color, label, groupId }, parsedArgs.key);
+    } else if (nums.length === 0) {
        if (ctx.pointBuffer.length > 0) {
            const id = ctx.generateId(ShapeType.POLYGON);
-           ctx.shapes.push({ id, type: ShapeType.POLYGON, points: ctx.pointBuffer.slice(), color, label, groupId });
+           registerShape(ctx, { id, type: ShapeType.POLYGON, points: ctx.pointBuffer.slice(), color, label, groupId }, parsedArgs.key);
            ctx.pointBuffer.length = 0; 
        }
     } else if (nums.length >= 6 && nums.length % 2 === 0) {
@@ -753,14 +948,21 @@ function executeShapeCommand(command: string, args: (string|number)[], ctx: Pars
         points.push({x: nums[k], y: nums[k+1]});
       }
       const id = ctx.generateId(ShapeType.POLYGON);
-      ctx.shapes.push({ id, type: ShapeType.POLYGON, points, color, label, groupId });
+      registerShape(ctx, { id, type: ShapeType.POLYGON, points, color, label, groupId }, parsedArgs.key);
     }
   } else if (command === 'text') {
-      if (nums.length >= 2 && label) {
+      if (parsedArgs.hasReferences && label) {
+          const numericParamCount = nums.length > 0 ? 1 : 0;
+          const { coordinates, params } = getReferencedCoordinates(parsedArgs, 1, numericParamCount);
           const id = ctx.generateId(ShapeType.TEXT);
-          ctx.shapes.push({
+          registerShape(ctx, {
+              id, type: ShapeType.TEXT, x: coordinates[0].x, y: coordinates[0].y, content: label, fontSize: params[0] || 12, color, groupId
+          }, parsedArgs.key);
+      } else if (nums.length >= 2 && label) {
+          const id = ctx.generateId(ShapeType.TEXT);
+          registerShape(ctx, {
               id, type: ShapeType.TEXT, x: nums[0], y: nums[1], content: label, fontSize: nums[2] || 12, color, groupId
-          });
+          }, parsedArgs.key);
       }
   }
 }

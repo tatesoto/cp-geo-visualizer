@@ -41,6 +41,7 @@ By inputting text-based commands, you can easily draw and visually verify points
 Enter the following commands in the editor to draw shapes.
 For coordinates and numbers, you can use numeric literals, pre-defined variables, and mathematical expressions (`+`, `-`, `*`, `/`, `%`).
 Optionally, you can add a label string like `TOP` or a color code like `#ff0000` at the end of each command.
+You can also assign a geometry key with `key=...` and reference it later with `@key`.
 
 ### Basic Shapes
 
@@ -74,6 +75,43 @@ Optionally, you can add a label string like `TOP` or a color code like `#ff0000`
   ```
   Text x y "content" [fontSize] [#color]
   ```
+
+### Geometry Keys
+
+Add `key=...` to any shape command to register it, then use `@key` in later shape commands.
+References expand to the coordinates of the keyed shape: points/circles/text expand to one coordinate, lines/segments to two coordinates, and polygons to their vertex list.
+Use `Select @key` to add an existing keyed shape to the Object List's Select section without creating a new object.
+
+```
+Read n m
+rep i n:
+    Read x y
+    Point x y key=i
+
+rep m:
+    Read u v
+    Seg @u @v
+```
+
+```
+Read n
+rep i n:
+    Read x y
+    Point x y key=i
+
+Read q
+rep q:
+    Read i
+    Select @i
+```
+
+```
+Seg 0 0 10 0 key=e
+Seg @e "#ff0000"
+
+Poly 0 0 10 0 5 8 key=tri
+Poly @tri "#00aa00"
+```
 
 ### Variables and Control Flow
 

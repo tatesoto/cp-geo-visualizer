@@ -4,7 +4,7 @@ import { ChevronRightIcon, ChevronDownIcon, XMarkIcon } from '@heroicons/react/2
 import { t } from '../constants/translations';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from './ui/select';
 import { ScrollArea } from './ui/scroll-area';
-import { formatShapeId } from '../utils/formatId';
+import { formatShapeDisplayId } from '../utils/formatId';
 
 interface ObjectListProps {
   shapes: Shape[];
@@ -29,7 +29,7 @@ const VirtualSection = ({
   highlightedShapeId: string | null,
   onSelectShape: (id: string | null) => void,
   getInfo: (shape: Shape) => string,
-  formatId: (id: string) => string
+  formatId: (shape: Shape) => string
 }) => {
   return (
     <div className="bg-white">
@@ -50,7 +50,7 @@ const VirtualSection = ({
           />
           <div className="flex-1 min-w-0 flex items-center justify-between">
             <span className={`text-[11px] font-mono truncate ${highlightedShapeId === shape.id ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>
-              {formatId(shape.id)}
+              {formatId(shape)}
             </span>
             <div className="flex items-center gap-2">
               {shape.groupId && (
@@ -63,6 +63,53 @@ const VirtualSection = ({
                     {getInfo(shape)}
                   </span>
             </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const SelectedSection = ({
+  entries,
+  highlightedShapeId,
+  onSelectShape,
+  getInfo,
+  formatId
+}: {
+  entries: { shape: Shape; order: number }[],
+  highlightedShapeId: string | null,
+  onSelectShape: (id: string | null) => void,
+  getInfo: (shape: Shape) => string,
+  formatId: (shape: Shape) => string
+}) => {
+  return (
+    <div className="bg-white">
+      {entries.map(({ shape, order }) => (
+        <div
+          key={`${shape.id}-${order}`}
+          onClick={() => onSelectShape(shape.id)}
+          className={`
+            flex h-9 items-center gap-3 px-4 cursor-pointer transition-colors border-l-[3px]
+            ${highlightedShapeId === shape.id
+              ? 'bg-blue-50 border-blue-500'
+              : 'border-transparent hover:bg-gray-50'}
+          `}
+        >
+          <span className="w-7 shrink-0 rounded-sm bg-red-50 px-1 py-0.5 text-center text-[9px] font-semibold text-red-600">
+            #{order}
+          </span>
+          <div
+            className="w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ backgroundColor: shape.color || '#000' }}
+          />
+          <div className="flex-1 min-w-0 flex items-center justify-between">
+            <span className={`text-[11px] font-mono truncate ${highlightedShapeId === shape.id ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>
+              {formatId(shape)}
+            </span>
+            <span className="text-[10px] text-gray-400 font-geo-mono truncate max-w-[100px] text-right">
+              {getInfo(shape)}
+            </span>
           </div>
         </div>
       ))}
@@ -106,6 +153,12 @@ const ObjectList: React.FC<ObjectListProps> = ({
     return groups;
   }, [filteredShapes]);
 
+  const selectedEntries = useMemo(() => {
+    return filteredShapes
+      .flatMap(shape => (shape.selectOrders ?? []).map(order => ({ shape, order })))
+      .sort((a, b) => a.order - b.order);
+  }, [filteredShapes]);
+
   const toggleSection = (type: string) => {
     setOpenSections(prev => ({ ...prev, [type]: !prev[type] }));
   };
@@ -122,7 +175,7 @@ const ObjectList: React.FC<ObjectListProps> = ({
     }
   };
 
-  const formatId = (id: string) => formatShapeId(id, idIndexBase);
+  const formatId = (shape: Shape) => formatShapeDisplayId(shape, idIndexBase);
 
   const getTypeLabel = (type: ShapeType) => {
     switch (type) {
@@ -251,37 +304,57 @@ const ObjectList: React.FC<ObjectListProps> = ({
                 <span className="text-sm">{t(lang, 'noObjects')}</span>
               </div>
             ) : (
-              typeOrder.map((type) => {
-                const groupShapes = groupedShapes[type];
-                if (!groupShapes || groupShapes.length === 0) return null;
-
-                const isOpen = openSections[type];
-
-                return (
-                  <div key={type} className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <div
-                      className="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 cursor-pointer bg-white hover:bg-gray-50 transition-colors rounded-t-lg"
-                      onClick={() => toggleSection(type)}
-                    >
-                      {isOpen ? <ChevronDownIcon className="w-3 h-3 text-gray-400" /> : <ChevronRightIcon className="w-3 h-3 text-gray-400" />}
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-600">{getTypeLabel(type)}</span>
-                      <span className="ml-auto text-[10px] text-gray-400">{groupShapes.length}</span>
+              <>
+                {selectedEntries.length > 0 && (
+                  <div className="bg-white rounded-lg border border-red-100 shadow-sm">
+                    <div className="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 bg-red-50 rounded-t-lg">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-red-700">{t(lang, 'selectedObjects')}</span>
+                      <span className="ml-auto text-[10px] text-red-400">{selectedEntries.length}</span>
                     </div>
-
-                    {isOpen && (
-                      <div className="border-t border-gray-100">
-                        <VirtualSection
-                          shapes={groupShapes}
-                          highlightedShapeId={highlightedShapeId}
-                          onSelectShape={onSelectShape}
-                          getInfo={getInfo}
-                          formatId={formatId}
-                        />
-                      </div>
-                    )}
+                    <div className="border-t border-red-100">
+                      <SelectedSection
+                        entries={selectedEntries}
+                        highlightedShapeId={highlightedShapeId}
+                        onSelectShape={onSelectShape}
+                        getInfo={getInfo}
+                        formatId={formatId}
+                      />
+                    </div>
                   </div>
-                );
-              })
+                )}
+                {typeOrder.map((type) => {
+                  const groupShapes = groupedShapes[type];
+                  if (!groupShapes || groupShapes.length === 0) return null;
+
+                  const isOpen = openSections[type];
+
+                  return (
+                    <div key={type} className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                      <div
+                        className="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 cursor-pointer bg-white hover:bg-gray-50 transition-colors rounded-t-lg"
+                        onClick={() => toggleSection(type)}
+                      >
+                        {isOpen ? <ChevronDownIcon className="w-3 h-3 text-gray-400" /> : <ChevronRightIcon className="w-3 h-3 text-gray-400" />}
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-600">{getTypeLabel(type)}</span>
+                        <span className="ml-auto text-[10px] text-gray-400">{groupShapes.length}</span>
+                      </div>
+
+                      {isOpen && (
+                        <div className="border-t border-gray-100">
+                          <VirtualSection
+                            shapes={groupShapes}
+                            highlightedShapeId={highlightedShapeId}
+                            onSelectShape={onSelectShape}
+                            getInfo={getInfo}
+                            formatId={formatId}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
             )}
           </div>
         </ScrollArea>

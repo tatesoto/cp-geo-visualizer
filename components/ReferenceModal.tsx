@@ -122,16 +122,27 @@ rep n:
                 <Row syntax="Circle x y r" desc={t(lang, 'ref_desc_circle')} />
                 <Row syntax="Poly x1 y1 x2 y2 ..." desc={t(lang, 'ref_desc_poly')} />
                 <Row syntax="Text x y string" desc={t(lang, 'ref_desc_text')} />
+                <Row syntax="Shape ... key=k" desc={t(lang, 'ref_desc_key')} />
+                <Row syntax="@k" desc={t(lang, 'ref_desc_key_ref')} />
+                <Row syntax="Select @k" desc={t(lang, 'ref_desc_select')} />
               </tbody>
             </table>
 
             <ExampleBlock 
                 label={t(lang, 'ref_example')}
-                format={`Read x y r
-Circle x y r
-// Fixed coordinates
-Line 0 0 100 100`}
-                input={`50 50 20`}
+                format={`Read n m
+rep i n:
+    Read x y
+    Point x y key=i
+rep m:
+    Read u v
+    Seg @u @v`}
+                input={`3 2
+0 0
+50 0
+25 40
+0 1
+1 2`}
             />
           </section>
 

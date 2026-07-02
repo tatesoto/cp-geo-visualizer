@@ -18,6 +18,31 @@ rep n:
 70 30
 `
   },
+  point_queries: {
+    label: "Point Queries",
+    format: `Read n
+rep i n:
+\tRead x y
+\tPoint x y key=i
+Read q
+rep q:
+\tRead i
+\tSelect @i`,
+    input: `6
+0 0
+20 20
+40 10
+60 40
+80 20
+100 50
+5
+0
+3
+1
+5
+2
+`
+  },
   segments: {
     label: "Line Segments",
     format: `Read n

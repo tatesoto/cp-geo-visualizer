@@ -19,7 +19,8 @@ function App() {
     executionTimeout: 3000,
     renderTimeout: 200,
     language: 'en',
-    idIndexBase: 0
+    idIndexBase: 0,
+    showCanvasIdKeys: false
   } as AppConfig);
 
   // Custom Hooks for Data & Actions
@@ -183,6 +184,7 @@ function App() {
               activeGroupId={activeGroupId}
               renderTimeout={config.renderTimeout}
               idIndexBase={config.idIndexBase}
+              showIdKeys={config.showCanvasIdKeys}
               lang={config.language}
             />
 
@@ -191,6 +193,8 @@ function App() {
               onToggleIdType={toggleIdType}
               idIndexBase={config.idIndexBase}
               onChangeIdIndexBase={(base) => setConfig(prev => ({ ...prev, idIndexBase: base }))}
+              showIdKeys={config.showCanvasIdKeys}
+              onToggleShowIdKeys={() => setConfig(prev => ({ ...prev, showCanvasIdKeys: !prev.showCanvasIdKeys }))}
               onResetView={() => visualizerRef.current?.resetView()}
               availableGroups={availableGroups}
               activeGroupId={activeGroupId}

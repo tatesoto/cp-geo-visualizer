@@ -3,7 +3,7 @@ import { Shape, ShapeType, Viewport, Language, IdIndexBase } from '../types';
 import { getBoundingBox, worldToScreen, screenToWorld } from '../services/geometry';
 import { drawGrid, drawAxes, drawShape, drawTimeoutIndicator } from '../services/renderer';
 import { t } from '../constants/translations';
-import { formatShapeId } from '../utils/formatId';
+import { formatShapeDisplayId } from '../utils/formatId';
 
 export interface VisualizerHandle {
   resetView: () => void;
@@ -17,6 +17,7 @@ interface VisualizerProps {
   activeGroupId?: string | null;
   renderTimeout?: number;
   idIndexBase?: IdIndexBase;
+  showIdKeys?: boolean;
   lang: Language;
 }
 
@@ -27,6 +28,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
   activeGroupId = null,
   renderTimeout = 200,
   idIndexBase = 0,
+  showIdKeys = true,
   lang
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -42,6 +44,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
   const renderTimeoutRef = useRef(renderTimeout);
   const activeGroupIdRef = useRef(activeGroupId);
   const idIndexBaseRef = useRef<IdIndexBase>(idIndexBase);
+  const showIdKeysRef = useRef(showIdKeys);
 
   const [hoverInfo, setHoverInfo] = useState<{ x: number, y: number, text: string } | null>(null);
   const [showZoomHint, setShowZoomHint] = useState(false);
@@ -148,7 +151,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
       if (shape.id === highlightedRef.current) continue;
       if (!isVisible(shape)) continue;
 
-      drawShape(ctx, shape, viewport, width, height, false, visibleIdTypesRef.current, idIndexBaseRef.current);
+      drawShape(ctx, shape, viewport, width, height, false, visibleIdTypesRef.current, idIndexBaseRef.current, showIdKeysRef.current);
     }
 
     if (isTimedOut) {
@@ -161,7 +164,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
       if (shape) {
         // Only draw if it belongs to current group or no group selected
         if (!currentGroupId || shape.groupId === currentGroupId) {
-          drawShape(ctx, shape, viewport, width, height, true, visibleIdTypesRef.current, idIndexBaseRef.current);
+          drawShape(ctx, shape, viewport, width, height, true, visibleIdTypesRef.current, idIndexBaseRef.current, showIdKeysRef.current);
         }
       }
     }
@@ -237,6 +240,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     visibleIdTypesRef.current = visibleIdTypes;
     renderTimeoutRef.current = renderTimeout;
     idIndexBaseRef.current = idIndexBase;
+    showIdKeysRef.current = showIdKeys;
 
     // Check if active group changed
     const prevGroupId = activeGroupIdRef.current;
@@ -248,7 +252,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
       requestRender();
     }
 
-  }, [highlightedShapeId, visibleIdTypes, renderTimeout, activeGroupId, idIndexBase, fitToShapes, requestRender]);
+  }, [highlightedShapeId, visibleIdTypes, renderTimeout, activeGroupId, idIndexBase, showIdKeys, fitToShapes, requestRender]);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -418,7 +422,7 @@ const Visualizer = forwardRef<VisualizerHandle, VisualizerProps>(({
     }
 
     if (hoveredShape && hoveredShape.type === ShapeType.POINT) {
-      const displayId = formatShapeId(hoveredShape.id, idIndexBaseRef.current);
+      const displayId = formatShapeDisplayId(hoveredShape, idIndexBaseRef.current);
       setHoverInfo({
         x: mouseX,
         y: mouseY,

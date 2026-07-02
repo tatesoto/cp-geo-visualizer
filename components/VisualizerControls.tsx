@@ -10,6 +10,8 @@ interface VisualizerControlsProps {
     onToggleIdType: (type: ShapeType) => void;
     idIndexBase: IdIndexBase;
     onChangeIdIndexBase: (base: IdIndexBase) => void;
+    showIdKeys: boolean;
+    onToggleShowIdKeys: () => void;
     onResetView: () => void;
     availableGroups: string[];
     activeGroupId: string | null;
@@ -28,6 +30,8 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
     onToggleIdType,
     idIndexBase,
     onChangeIdIndexBase,
+    showIdKeys,
+    onToggleShowIdKeys,
     onResetView,
     availableGroups,
     activeGroupId,
@@ -245,6 +249,27 @@ const VisualizerControls: React.FC<VisualizerControlsProps> = ({
                                     {t(lang, 'idIndexingDesc')}
                                 </div> */}
                             </div>
+                            <DropdownMenuSeparator />
+                            <button
+                                onClick={onToggleShowIdKeys}
+                                className="flex w-full items-center justify-between gap-3 rounded-md px-1.5 py-1.5 text-left text-[10px] font-semibold text-gray-600 hover:bg-gray-50"
+                                title={t(lang, 'idKeyDisplayDesc')}
+                            >
+                                <span>{t(lang, 'idKeyDisplay')}</span>
+                                <span
+                                    className={`
+                                        relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors
+                                        ${showIdKeys ? 'bg-black' : 'bg-gray-300'}
+                                    `}
+                                >
+                                    <span
+                                        className={`
+                                            inline-block h-3 w-3 rounded-full bg-white transition-transform
+                                            ${showIdKeys ? 'translate-x-3.5' : 'translate-x-0.5'}
+                                        `}
+                                    />
+                                </span>
+                            </button>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
