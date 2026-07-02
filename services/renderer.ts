@@ -1,7 +1,7 @@
 import { Shape, ShapeType, Viewport, Language, IdIndexBase } from '../types';
 import { worldToScreen, screenToWorld } from './geometry';
 import { t } from '../constants/translations';
-import { formatShapeId } from '../utils/formatId';
+import { formatShapeDisplayId } from '../utils/formatId';
 
 const GEO_MONO_FONT_STACK = 'Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
 
@@ -93,7 +93,8 @@ export const drawShape = (
     height: number, 
     isHighlight: boolean,
     visibleIdTypes: ShapeType[],
-    idIndexBase: IdIndexBase
+    idIndexBase: IdIndexBase,
+    showIdKeys: boolean
 ) => {
     const baseLineWidth = 2; 
 
@@ -262,7 +263,7 @@ export const drawShape = (
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
         
-        const text = formatShapeId(shape.id, idIndexBase);
+        const text = formatShapeDisplayId(shape, idIndexBase, showIdKeys);
         const x = labelPoint.x + 6;
         const y = labelPoint.y - 6;
 

@@ -10,6 +10,9 @@ export enum ShapeType {
 export interface BaseShape {
   id: string;
   type: ShapeType;
+  key?: string;
+  selected?: boolean;
+  selectOrders?: number[];
   color?: string;
   label?: string;
   groupId?: string;
@@ -75,4 +78,5 @@ export interface AppConfig {
   renderTimeout: number;
   language: Language;
   idIndexBase: IdIndexBase;
+  showCanvasIdKeys: boolean;
 }

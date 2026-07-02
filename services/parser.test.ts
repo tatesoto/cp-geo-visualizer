@@ -186,3 +186,162 @@ else 1:
     expect(result.error).toMatch(/Unexpected token/);
   });
 });
+
+describe('parser geometry keys', () => {
+  it('references keyed points from query endpoints', () => {
+    const format = `Read n m
+rep i n:
+  Read x y
+  Point x y key=i
+rep m:
+  Read u v
+  Seg @u @v`;
+
+    const result = run(format, `3 2
+0 0
+10 0
+10 10
+0 1
+1 2`);
+
+    expect(result.error).toBeNull();
+    expect(result.shapes).toHaveLength(5);
+    const firstSeg = result.shapes[3];
+    const secondSeg = result.shapes[4];
+    expect(firstSeg.type).toBe(ShapeType.SEGMENT);
+    expect(secondSeg.type).toBe(ShapeType.SEGMENT);
+    if (firstSeg.type === ShapeType.SEGMENT) {
+      expect(firstSeg.p1).toEqual({ x: 0, y: 0 });
+      expect(firstSeg.p2).toEqual({ x: 10, y: 0 });
+    }
+    if (secondSeg.type === ShapeType.SEGMENT) {
+      expect(secondSeg.p1).toEqual({ x: 10, y: 0 });
+      expect(secondSeg.p2).toEqual({ x: 10, y: 10 });
+    }
+  });
+
+  it('supports expression-based keys for 1-indexed input references', () => {
+    const format = `Read n m
+rep i n:
+  Read x y
+  Point x y key=i+1
+rep m:
+  Read u v
+  Seg @u @v`;
+
+    const result = run(format, `2 1
+5 5
+9 9
+1 2`);
+
+    expect(result.error).toBeNull();
+    const seg = result.shapes[2];
+    expect(seg.type).toBe(ShapeType.SEGMENT);
+    if (seg.type === ShapeType.SEGMENT) {
+      expect(seg.p1).toEqual({ x: 5, y: 5 });
+      expect(seg.p2).toEqual({ x: 9, y: 9 });
+    }
+  });
+
+  it('expands keyed segments, polygons, and circle centers', () => {
+    const format = `Seg 0 0 10 0 key=e
+Seg @e "#ff0000"
+Poly 0 0 10 0 5 8 key=tri
+Poly @tri "#00aa00"
+Circle 3 4 2 key=c
+Circle @c 9`;
+
+    const result = run(format, ``);
+
+    expect(result.error).toBeNull();
+    expect(result.shapes).toHaveLength(6);
+
+    const seg = result.shapes[1];
+    expect(seg.type).toBe(ShapeType.SEGMENT);
+    if (seg.type === ShapeType.SEGMENT) {
+      expect(seg.p1).toEqual({ x: 0, y: 0 });
+      expect(seg.p2).toEqual({ x: 10, y: 0 });
+      expect(seg.color).toBe('#ff0000');
+    }
+
+    const poly = result.shapes[3];
+    expect(poly.type).toBe(ShapeType.POLYGON);
+    if (poly.type === ShapeType.POLYGON) {
+      expect(poly.points).toEqual([
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 5, y: 8 },
+      ]);
+      expect(poly.color).toBe('#00aa00');
+    }
+
+    const circle = result.shapes[5];
+    expect(circle.type).toBe(ShapeType.CIRCLE);
+    if (circle.type === ShapeType.CIRCLE) {
+      expect(circle.x).toBe(3);
+      expect(circle.y).toBe(4);
+      expect(circle.r).toBe(9);
+    }
+  });
+
+  it('rejects undefined keys, duplicate keys, and incompatible references', () => {
+    const undefinedKey = run(`Seg @a @b`, ``);
+    expect(undefinedKey.error).toMatch(/Undefined geometry key/);
+
+    const duplicateKey = run(`Point 0 0 key=a
+Point 1 1 key=a`, ``);
+    expect(duplicateKey.error).toMatch(/Duplicate geometry key/);
+
+    const incompatible = run(`Seg 0 0 10 0 key=e
+Circle @e 5`, ``);
+    expect(incompatible.error).toMatch(/arity mismatch/i);
+  });
+
+  it('selects keyed shapes without creating new objects', () => {
+    const format = `Read n
+rep i n:
+  Read x y
+  Point x y key=i
+Read q
+rep q:
+  Read i
+  Select @i`;
+
+    const result = run(format, `3
+0 0
+10 0
+20 0
+2
+0
+2`);
+
+    expect(result.error).toBeNull();
+    expect(result.shapes).toHaveLength(3);
+    expect(result.shapes[0].selected).toBe(true);
+    expect(result.shapes[0].selectOrders).toEqual([0]);
+    expect(result.shapes[1].selected).toBeUndefined();
+    expect(result.shapes[2].selected).toBe(true);
+    expect(result.shapes[2].selectOrders).toEqual([1]);
+  });
+
+  it('preserves Select call order including duplicate references', () => {
+    const format = `Point 0 0 key=0
+Point 10 0 key=1
+Select @1
+Select @0
+Select @1`;
+
+    const result = run(format, ``);
+
+    expect(result.error).toBeNull();
+    expect(result.shapes).toHaveLength(2);
+    expect(result.shapes[0].selectOrders).toEqual([1]);
+    expect(result.shapes[1].selectOrders).toEqual([0, 2]);
+  });
+
+  it('rejects Select without a geometry reference', () => {
+    const result = run(`Select 1`, ``);
+    expect(result.error).toMatch(/Select requires/i);
+    expect(result.shapes).toHaveLength(0);
+  });
+});

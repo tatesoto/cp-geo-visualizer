@@ -1,4 +1,4 @@
-import { IdIndexBase } from '../types';
+import { IdIndexBase, Shape } from '../types';
 
 export const formatShapeId = (id: string, indexBase: IdIndexBase): string => {
   if (indexBase === 0) return id;
@@ -8,4 +8,9 @@ export const formatShapeId = (id: string, indexBase: IdIndexBase): string => {
   const num = Number.parseInt(match[2], 10);
   if (Number.isNaN(num)) return id;
   return `${prefix}${num + 1}`;
+};
+
+export const formatShapeDisplayId = (shape: Shape, indexBase: IdIndexBase, showKey: boolean = true): string => {
+  const id = formatShapeId(shape.id, indexBase);
+  return showKey && shape.key ? `${id} (key=${shape.key})` : id;
 };
